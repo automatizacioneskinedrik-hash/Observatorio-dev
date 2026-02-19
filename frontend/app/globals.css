@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/* =========================
+   Base
+========================= */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--kv-bg);
+  background-image: var(--kv-glow);
+  color: var(--kv-text);
+}
+
+/* Placeholders */
+input::placeholder,
+textarea::placeholder {
+  color: var(--kv-subtext);
+  opacity: 1;
+}
+
+/* =========================
+   Scrollbar (simple)
+========================= */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.30);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* =========================
+   Animations
+========================= */
+@keyframes kvBounce {
+
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: .35;
+  }
+
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@keyframes kvWave {
+
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: .35;
+  }
+
+  25% {
+    transform: translateY(-5px);
+    opacity: .95;
+  }
+
+  50% {
+    transform: translateY(0);
+    opacity: .55;
+  }
+
+  75% {
+    transform: translateY(3px);
+    opacity: .35;
+  }
+}
+
+/* =========================
+   TOKENS K‑Vision (DARK)
+========================= */
+:root {
+  --kv-text: #e5e7eb;
+  --kv-subtext: rgba(229, 231, 235, 0.72);
+
+  --kv-bg: linear-gradient(135deg,
+      #061612 0%,
+      #041c17 45%,
+      #022e26 100%);
+
+
+  --kv-panel: rgba(2, 40, 34, 0.65);
+  --kv-panel-strong: rgba(2, 40, 34, 0.85);
+
+  --kv-border: rgba(0, 168, 132, 0.22);
+
+  /* Acento VERDE (el “resaltado”) */
+  --kv-accent: #00a884;
+  --kv-accent-bg: rgba(0, 168, 132, 0.16);
+  --kv-accent-border: rgba(0, 168, 132, 0.40);
+  --kv-accent-ring: rgba(0, 168, 132, 0.18);
+
+  /* Popover (settings) */
+  --kv-popover-bg: rgba(0, 45, 38, 0.95);
+  --kv-popover-border: rgba(0, 168, 132, 0.28);
+  --kv-popover-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+
+  /* Botón gear */
+  --kv-gear-bg: rgba(0, 77, 61, 0.45);
+  --kv-gear-border: rgba(0, 168, 132, 0.35);
+  /* Chat bubbles */
+  --kv-chat-user-bg: var(--kv-accent-bg);
+  --kv-chat-user-border: var(--kv-accent-border);
+
+  --kv-chat-bot-bg: var(--kv-panel);
+  --kv-chat-bot-border: var(--kv-border);
+
+}
+
+/* =========================
+   TOKENS K‑Vision (LIGHT)
+========================= */
+html.light {
+  --kv-text: #111827;
+  --kv-subtext: rgba(17, 24, 39, 0.65);
+
+  --kv-bg: #f3f4f6;
+
+  --kv-panel: #ffffff;
+  --kv-panel-strong: #f9fafb;
+  --kv-border: rgba(30, 47, 74, 0.14);
+
+  /* Mismo acento verde, pero visible en claro */
+  --kv-accent: #008f72;
+  --kv-accent-bg: rgba(0, 143, 114, 0.14);
+  --kv-accent-border: rgba(0, 143, 114, 0.40);
+  --kv-accent-ring: rgba(0, 143, 114, 0.16);
+
+  --kv-popover-bg: #ffffff;
+  --kv-popover-border: rgba(30, 47, 74, 0.14);
+  --kv-popover-shadow: 0 18px 50px rgba(17, 24, 39, 0.12);
+
+  --kv-gear-bg: #ffffff;
+  --kv-gear-border: rgba(30, 47, 74, 0.14);
+  /* Chat bubbles (LIGHT) */
+  --kv-chat-user-bg: #ffffff;
+  /* 👈 ya no verde */
+  --kv-chat-user-border: rgba(30, 47, 74, 0.14);
+  /* borde neutro */
+  --kv-chat-bot-bg: #ffffff;
+  --kv-chat-bot-border: rgba(30, 47, 74, 0.14);
+}
+
+body {
+  background: var(--kv-bg);
+  color: var(--kv-text);
+}
