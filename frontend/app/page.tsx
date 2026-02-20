@@ -44,7 +44,7 @@ export default function Home() {
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
