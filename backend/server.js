@@ -24,6 +24,14 @@ app.use(
 
 app.use(express.json());
 
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "backend",
+    message: "API activa. Usa GET /health o POST /chat",
+  });
+});
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.post("/chat", async (req, res) => {
