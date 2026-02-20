@@ -6,7 +6,7 @@
       - --file=backend/Dockerfile
       - --tag=${_BACKEND_IMAGE}:${SHORT_SHA}
       - --tag=${_BACKEND_IMAGE}:latest
-      - .
+      - backend
 
   - id: push-backend-short-sha
     name: gcr.io/cloud-builders/docker
@@ -23,7 +23,7 @@
       - --file=frontend/Dockerfile
       - --tag=${_FRONTEND_IMAGE}:${SHORT_SHA}
       - --tag=${_FRONTEND_IMAGE}:latest
-      - .
+      - frontend
 
   - id: push-frontend-short-sha
     name: gcr.io/cloud-builders/docker
