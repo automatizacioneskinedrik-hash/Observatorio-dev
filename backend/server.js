@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import "dotenv/config";
+=======
+﻿import "dotenv/config";
+>>>>>>> 2fc272d7544d0eae9c19b424ade8c7224aabf6e1
 import express from "express";
 import cors from "cors";
 import OpenAI from "openai";
@@ -6,7 +10,11 @@ import OpenAI from "openai";
 const app = express();
 
 const PORT = Number(process.env.PORT ?? 8080);
+<<<<<<< HEAD
 const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "https://observatorio-970552335718.europe-west1.run.app,https://observatorio-970552335718.europe-southwest1.run.app,http://localhost:3000")
+=======
+const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "http://localhost:5000")
+>>>>>>> 2fc272d7544d0eae9c19b424ade8c7224aabf6e1
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -24,6 +32,7 @@ app.use(
 
 app.use(express.json());
 
+<<<<<<< HEAD
 app.get("/", (_req, res) => {
   res.status(200).json({
     ok: true,
@@ -32,6 +41,8 @@ app.get("/", (_req, res) => {
   });
 });
 
+=======
+>>>>>>> 2fc272d7544d0eae9c19b424ade8c7224aabf6e1
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.post("/chat", async (req, res) => {

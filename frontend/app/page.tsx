@@ -44,6 +44,7 @@ export default function Home() {
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+<<<<<<< HEAD
   const API_BASE_RAW = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   if (!API_BASE_RAW) {
@@ -51,6 +52,13 @@ export default function Home() {
   }
 
   const API_BASE = API_BASE_RAW.replace(/\/$/, "");
+=======
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || (
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:5000" 
+    : "https://backend-970552335718.europe-southwest1.run.app"
+);
+>>>>>>> 2fc272d7544d0eae9c19b424ade8c7224aabf6e1
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -427,7 +435,14 @@ export default function Home() {
         </InfoModal>
 
       )}
+<<<<<<< HEAD
       <ThemeToggleFab />
+=======
+      <>
+        {/* todo tu layout */}
+        <ThemeToggleFab />
+      </>
+>>>>>>> 2fc272d7544d0eae9c19b424ade8c7224aabf6e1
     </div>
   );
 }
