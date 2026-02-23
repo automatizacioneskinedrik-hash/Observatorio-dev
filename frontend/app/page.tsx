@@ -44,7 +44,13 @@ export default function Home() {
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
+  const API_BASE_RAW = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (!API_BASE_RAW) {
+    throw new Error("Falta NEXT_PUBLIC_API_BASE_URL en el build del frontend");
+  }
+
+  const API_BASE = API_BASE_RAW.replace(/\/$/, "");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
