@@ -1,4 +1,4 @@
-﻿import "dotenv/config";
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import OpenAI from "openai";
@@ -6,7 +6,7 @@ import OpenAI from "openai";
 const app = express();
 
 const PORT = Number(process.env.PORT ?? 8080);
-const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "http://localhost:3000")
+const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "https://observatorio-970552335718.europe-west1.run.app,http://localhost:3000")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
