@@ -1,4 +1,8 @@
 ﻿steps:
+  # ============================
+  # 🔹 BACKEND
+  # ============================
+
   - id: build-backend
     name: gcr.io/cloud-builders/docker
     args:
@@ -10,39 +14,67 @@
 
   - id: push-backend-short-sha
     name: gcr.io/cloud-builders/docker
-    args: ["push", "${_BACKEND_IMAGE}:${SHORT_SHA}"]
+    args:
+      - push
+      - ${_BACKEND_IMAGE}:${SHORT_SHA}
 
   - id: push-backend-latest
     name: gcr.io/cloud-builders/docker
-    args: ["push", "${_BACKEND_IMAGE}:latest"]
+    args:
+      - push
+      - ${_BACKEND_IMAGE}:latest
+
+  # ============================
+  # 🔹 FRONTEND
+  # ============================
 
   - id: build-frontend
     name: gcr.io/cloud-builders/docker
     args:
       - build
       - --file=frontend/Dockerfile
+      - --build-arg=NEXT_PUBLIC_API_BASE_URL=${_API_BASE_URL}
       - --tag=${_FRONTEND_IMAGE}:${SHORT_SHA}
       - --tag=${_FRONTEND_IMAGE}:latest
       - frontend
 
   - id: push-frontend-short-sha
     name: gcr.io/cloud-builders/docker
-    args: ["push", "${_FRONTEND_IMAGE}:${SHORT_SHA}"]
+    args:
+      - push
+      - ${_FRONTEND_IMAGE}:${SHORT_SHA}
 
   - id: push-frontend-latest
     name: gcr.io/cloud-builders/docker
-    args: ["push", "${_FRONTEND_IMAGE}:latest"]
+    args:
+      - push
+      - ${_FRONTEND_IMAGE}:latest
+
+# ============================
+# 🔹 VARIABLES
+# ============================
 
 substitutions:
   _AR_REPO: europe-southwest1-docker.pkg.dev/observatorio-dev/repo-observatorio-dev
   _BACKEND_IMAGE: ${_AR_REPO}/backend
   _FRONTEND_IMAGE: ${_AR_REPO}/frontend
 
+  # 👇 URL REAL de tu backend en Cloud Run
+  _API_BASE_URL: https://backend-970552335718.europe-southwest1.run.app
+
+# ============================
+# 🔹 IMÁGENES RESULTANTES
+# ============================
+
 images:
   - ${_BACKEND_IMAGE}:${SHORT_SHA}
   - ${_BACKEND_IMAGE}:latest
   - ${_FRONTEND_IMAGE}:${SHORT_SHA}
   - ${_FRONTEND_IMAGE}:latest
+
+# ============================
+# 🔹 OPCIONES
+# ============================
 
 options:
   logging: CLOUD_LOGGING_ONLY
