@@ -6,7 +6,7 @@ import OpenAI from "openai";
 const app = express();
 
 const PORT = Number(process.env.PORT ?? 8080);
-const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "http://localhost:3000")
+const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "http://localhost:5000")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
