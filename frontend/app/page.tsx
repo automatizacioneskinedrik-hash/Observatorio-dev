@@ -44,13 +44,14 @@ export default function Home() {
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const API_BASE_RAW = process.env.NEXT_PUBLIC_API_BASE_URL || (
-    typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "http://localhost:5000" 
-      : "https://backend-970552335718.europe-southwest1.run.app"
-  );
+  const API_BASE_RAW = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (!API_BASE_RAW) {
+    throw new Error("Falta NEXT_PUBLIC_API_BASE_URL");
+  }
 
   const API_BASE = API_BASE_RAW.replace(/\/$/, "");
+
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
