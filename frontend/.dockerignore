@@ -3,8 +3,4 @@
 npm-debug.log
 .git
 .gitignore
-<<<<<<< HEAD
 Dockerfile
-=======
-Dockerfile
->>>>>>> 2fc272d7544d0eae9c19b424ade8c7224aabf6e1
