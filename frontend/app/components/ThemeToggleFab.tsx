@@ -62,13 +62,14 @@ function MoonIcon({ size = 18 }: { size?: number }) {
 }
 
 export function ThemeToggleFab() {
-    const [theme, setThemeState] = useState<Theme>("dark");
+    const [theme, setThemeState] = useState<Theme>(() => {
+        if (typeof window === "undefined") return "dark";
+        return getTheme();
+    });
 
     useEffect(() => {
-        const t = getTheme();
-        setThemeState(t);
-        applyTheme(t);
-    }, []);
+        applyTheme(theme);
+    }, [theme]);
 
     const toggle = () => {
         const next: Theme = theme === "dark" ? "light" : "dark";

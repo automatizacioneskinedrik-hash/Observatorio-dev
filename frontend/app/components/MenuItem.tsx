@@ -4,7 +4,7 @@ export function MenuItem({
   label, icon, menuOpen, onClick, active,
 }: {
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   menuOpen: boolean;
   active?: boolean;
   onClick?: () => void;
