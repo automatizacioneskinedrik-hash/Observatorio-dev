@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { defaultTitleFromFirstUserMessage, uid } from "../lib/chatTemp";
 import type { ChatMessage } from "../types/chat";
 import type { Conversation } from "../types/conversation";
@@ -15,7 +15,7 @@ type UseChatConversationsResult = {
   messages: ChatMessage[];
   input: string;
   loading: boolean;
-  setInput: (value: string) => void;
+  setInput: Dispatch<SetStateAction<string>>;
   setActiveConvId: (id: string) => void;
   onNewConversation: () => void;
   onRenameConversation: (id: string, title: string) => void;

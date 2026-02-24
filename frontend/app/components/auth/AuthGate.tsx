@@ -2,15 +2,21 @@
 
 import type { CSSProperties } from "react";
 import type { User } from "../../types/user";
-import { useGoogleAuth } from "../../hooks/useGoogleAuth";
+import { useSocialAuth } from "../../hooks/useSocialAuth";
 
 type Props = {
   onAuthenticated: (user: User) => void;
 };
 
 export function AuthGate({ onAuthenticated }: Props) {
-  const { googleReady, authLoading, authError, signInWithGoogle } =
-    useGoogleAuth(onAuthenticated);
+  const {
+    providerReady,
+    authLoading,
+    authError,
+    signInWithGoogle,
+    signInWithApple,
+    signInWithMicrosoft,
+  } = useSocialAuth(onAuthenticated);
 
   const inputStyle: CSSProperties = {
     padding: "10px 12px",
@@ -47,12 +53,6 @@ export function AuthGate({ onAuthenticated }: Props) {
     fontWeight: 600,
   };
 
-  const disabledSocialStyle: CSSProperties = {
-    ...socialButtonStyle,
-    opacity: 0.55,
-    cursor: "not-allowed",
-  };
-
   return (
     <div
       style={{
@@ -87,7 +87,7 @@ export function AuthGate({ onAuthenticated }: Props) {
         <button
           style={socialButtonStyle}
           onClick={signInWithGoogle}
-          disabled={!googleReady || authLoading}
+          disabled={!providerReady.google || authLoading}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -98,7 +98,13 @@ export function AuthGate({ onAuthenticated }: Props) {
           Continuar con Google
         </button>
 
-        <button style={disabledSocialStyle} disabled>
+        <button
+          style={socialButtonStyle}
+          onClick={() => {
+            void signInWithApple();
+          }}
+          disabled={!providerReady.apple || authLoading}
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
@@ -108,7 +114,13 @@ export function AuthGate({ onAuthenticated }: Props) {
           Continuar con Apple
         </button>
 
-        <button style={disabledSocialStyle} disabled>
+        <button
+          style={socialButtonStyle}
+          onClick={() => {
+            void signInWithMicrosoft();
+          }}
+          disabled={authLoading}
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#F25022" d="M2 2h9v9H2z" />
             <path fill="#7FBA00" d="M13 2h9v9h-9z" />
