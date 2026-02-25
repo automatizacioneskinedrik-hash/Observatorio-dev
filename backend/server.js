@@ -78,6 +78,7 @@ app.post("/auth/google", async (req, res) => {
       email: payload.email,
       name: payload.name ?? "",
     });
+    
   } catch (err) {
     console.warn("[auth/google] token invalido o error de verificacion", {
       message: err instanceof Error ? err.message : "unknown_error",
