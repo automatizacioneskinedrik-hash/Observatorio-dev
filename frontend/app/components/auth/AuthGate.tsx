@@ -8,15 +8,29 @@ type Props = {
   onAuthenticated: (user: User) => void;
 };
 
+type EmailFlowStep = "email" | "code" | "register";
+
 export function AuthGate({ onAuthenticated }: Props) {
   const { providerReady, authLoading, authError, signInWithGoogle } =
     useSocialAuth(onAuthenticated);
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
+
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [step, setStep] = useState<EmailFlowStep>("email");
+  const [emailFlowLoading, setEmailFlowLoading] = useState(false);
+  const [emailFlowError, setEmailFlowError] = useState<string | null>(null);
+  const [emailFlowMessage, setEmailFlowMessage] = useState<string | null>(null);
 
   const isValidEmail = useMemo(() => {
     const value = email.trim();
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }, [email]);
+  const isValidCode = /^\d{6}$/.test(code.trim());
+  const isValidRegisterForm =
+    name.trim().length > 0 && password.trim().length >= 8;
 
   const inputStyle: CSSProperties = {
     padding: "10px 12px",
@@ -52,6 +66,122 @@ export function AuthGate({ onAuthenticated }: Props) {
     cursor: "pointer",
     fontWeight: 400,
     transition: "background-color 160ms ease, border-color 160ms ease",
+  };
+
+  const secondaryButtonStyle: CSSProperties = {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid var(--kv-border)",
+    background: "transparent",
+    color: "var(--kv-text)",
+    cursor: "pointer",
+    fontWeight: 500,
+  };
+
+  const handleRequestCode = async () => {
+    if (!isValidEmail) return;
+    if (!apiBase) {
+      setEmailFlowError("Falta NEXT_PUBLIC_API_BASE_URL");
+      return;
+    }
+
+    setEmailFlowError(null);
+    setEmailFlowMessage(null);
+    setEmailFlowLoading(true);
+    try {
+      const response = await fetch(`${apiBase}/auth/request-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error ?? "No se pudo enviar el codigo");
+      }
+
+      setStep("code");
+      setEmailFlowMessage("Te enviamos un codigo de 6 digitos a tu correo.");
+    } catch (error) {
+      setEmailFlowError(
+        error instanceof Error ? error.message : "Error enviando codigo"
+      );
+    } finally {
+      setEmailFlowLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!isValidCode) return;
+    if (!apiBase) {
+      setEmailFlowError("Falta NEXT_PUBLIC_API_BASE_URL");
+      return;
+    }
+
+    setEmailFlowError(null);
+    setEmailFlowMessage(null);
+    setEmailFlowLoading(true);
+    try {
+      const response = await fetch(`${apiBase}/auth/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error ?? "Codigo invalido");
+      }
+
+      setStep("register");
+      setEmailFlowMessage("Codigo verificado. Completa tu registro.");
+    } catch (error) {
+      setEmailFlowError(
+        error instanceof Error ? error.message : "Error verificando codigo"
+      );
+    } finally {
+      setEmailFlowLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!isValidRegisterForm) return;
+    if (!apiBase) {
+      setEmailFlowError("Falta NEXT_PUBLIC_API_BASE_URL");
+      return;
+    }
+
+    setEmailFlowError(null);
+    setEmailFlowMessage(null);
+    setEmailFlowLoading(true);
+    try {
+      const response = await fetch(`${apiBase}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim(),
+          password,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error ?? "No se pudo completar el registro");
+      }
+
+      onAuthenticated({
+        name: data?.name ?? name.trim(),
+        email: data?.email ?? email.trim(),
+        subscription: "Free",
+      });
+    } catch (error) {
+      setEmailFlowError(
+        error instanceof Error ? error.message : "Error creando cuenta"
+      );
+    } finally {
+      setEmailFlowLoading(false);
+    }
   };
 
   return (
@@ -128,32 +258,127 @@ export function AuthGate({ onAuthenticated }: Props) {
           <div style={{ flex: 1, height: 1, background: "var(--kv-border)" }} />
         </div>
 
-        <input
-          placeholder="Ingresa tu correo"
-          style={inputStyle}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          type="email"
-        />
+        {step === "email" && (
+          <>
+            <input
+              placeholder="Ingresa tu correo"
+              style={inputStyle}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+            />
 
-        <button
-          style={
-            isValidEmail
-              ? {
-                  ...primaryStyle,
-                  cursor: "pointer",
-                  opacity: 1,
-                }
-              : primaryStyle
-          }
-          disabled={!isValidEmail}
-        >
-          Continuar
-        </button>
+            <button
+              style={
+                isValidEmail && !emailFlowLoading
+                  ? {
+                      ...primaryStyle,
+                      cursor: "pointer",
+                      opacity: 1,
+                    }
+                  : primaryStyle
+              }
+              disabled={!isValidEmail || emailFlowLoading}
+              onClick={() => {
+                void handleRequestCode();
+              }}
+            >
+              {emailFlowLoading ? "Enviando..." : "Continuar"}
+            </button>
+          </>
+        )}
+
+        {step === "code" && (
+          <>
+            <input
+              placeholder="Ingresa el codigo de 6 digitos"
+              style={inputStyle}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              maxLength={6}
+            />
+            <button
+              style={
+                isValidCode && !emailFlowLoading
+                  ? {
+                      ...primaryStyle,
+                      cursor: "pointer",
+                      opacity: 1,
+                    }
+                  : primaryStyle
+              }
+              disabled={!isValidCode || emailFlowLoading}
+              onClick={() => {
+                void handleVerifyCode();
+              }}
+            >
+              {emailFlowLoading ? "Verificando..." : "Verificar codigo"}
+            </button>
+            <button
+              type="button"
+              style={secondaryButtonStyle}
+              onClick={() => {
+                setStep("email");
+                setCode("");
+                setEmailFlowError(null);
+                setEmailFlowMessage(null);
+              }}
+            >
+              Cambiar correo
+            </button>
+          </>
+        )}
+
+        {step === "register" && (
+          <>
+            <input value={email} style={{ ...inputStyle, opacity: 0.7 }} disabled />
+            <input
+              placeholder="Nombre completo"
+              style={inputStyle}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              placeholder="Crea una contraseña (minimo 8)"
+              type="password"
+              style={inputStyle}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              style={
+                isValidRegisterForm && !emailFlowLoading
+                  ? {
+                      ...primaryStyle,
+                      cursor: "pointer",
+                      opacity: 1,
+                    }
+                  : primaryStyle
+              }
+              disabled={!isValidRegisterForm || emailFlowLoading}
+              onClick={() => {
+                void handleRegister();
+              }}
+            >
+              {emailFlowLoading ? "Creando cuenta..." : "Crear cuenta"}
+            </button>
+          </>
+        )}
 
         {authError && (
           <div style={{ fontSize: 12, color: "#ef4444", textAlign: "center" }}>
             {authError}
+          </div>
+        )}
+        {emailFlowError && (
+          <div style={{ fontSize: 12, color: "#ef4444", textAlign: "center" }}>
+            {emailFlowError}
+          </div>
+        )}
+        {emailFlowMessage && (
+          <div style={{ fontSize: 12, color: "var(--kv-text)", textAlign: "center", opacity: 0.85 }}>
+            {emailFlowMessage}
           </div>
         )}
 
