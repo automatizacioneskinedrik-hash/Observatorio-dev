@@ -1,22 +1,22 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import type { User } from "../../types/user";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useSocialAuth } from "../../hooks/useSocialAuth";
+import type { User } from "../../types/user";
 
 type Props = {
   onAuthenticated: (user: User) => void;
 };
 
 export function AuthGate({ onAuthenticated }: Props) {
-  const {
-    providerReady,
-    authLoading,
-    authError,
-    signInWithGoogle,
-    signInWithApple,
-    signInWithMicrosoft,
-  } = useSocialAuth(onAuthenticated);
+  const { providerReady, authLoading, authError, signInWithGoogle } =
+    useSocialAuth(onAuthenticated);
+  const [email, setEmail] = useState("");
+
+  const isValidEmail = useMemo(() => {
+    const value = email.trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }, [email]);
 
   const inputStyle: CSSProperties = {
     padding: "10px 12px",
@@ -50,7 +50,8 @@ export function AuthGate({ onAuthenticated }: Props) {
     background: "transparent",
     color: "var(--kv-text)",
     cursor: "pointer",
-    fontWeight: 600,
+    fontWeight: 400,
+    transition: "background-color 160ms ease, border-color 160ms ease",
   };
 
   return (
@@ -80,54 +81,45 @@ export function AuthGate({ onAuthenticated }: Props) {
           gap: 14,
         }}
       >
-        <div style={{ fontSize: 18, fontWeight: 600, textAlign: "center" }}>
-          Regístrate o inicia sesión
+        <div style={{ fontSize: 28, fontWeight: 600, textAlign: "center", lineHeight: 1.2 }}>
+          Registrate o inicia sesion
+        </div>
+        <div style={{ fontSize: 16, textAlign: "center", opacity: 0.8 }}>
+          Incia sesion y tendras acceso completo a AEECCO IA
         </div>
 
         <button
           style={socialButtonStyle}
           onClick={signInWithGoogle}
           disabled={!providerReady.google || authLoading}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.06)";
+            e.currentTarget.style.borderColor = "var(--kv-accent-border)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "var(--kv-border)";
+          }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true">
             <path
-              fill="#EA4335"
-              d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2a9.8 9.8 0 1 0 0 19.6c5.7 0 9.5-4 9.5-9.6 0-.6-.1-1.1-.2-1.6H12z"
+              fill="#FFC107"
+              d="M43.61 20.08H42V20H24v8h11.3C33.65 32.66 29.19 36 24 36c-6.63 0-12-5.37-12-12s5.37-12 12-12c3.06 0 5.84 1.15 7.95 3.05l5.66-5.66C34.05 6.05 29.27 4 24 4 12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20c0-1.34-.14-2.65-.39-3.92z"
+            />
+            <path
+              fill="#FF3D00"
+              d="M6.31 14.69l6.57 4.82C14.66 15.1 18.96 12 24 12c3.06 0 5.84 1.15 7.95 3.05l5.66-5.66C34.05 6.05 29.27 4 24 4c-7.68 0-14.41 4.34-17.69 10.69z"
+            />
+            <path
+              fill="#4CAF50"
+              d="M24 44c5.17 0 9.86-1.98 13.41-5.2l-6.19-5.24C29.15 35.09 26.7 36 24 36c-5.17 0-9.62-3.32-11.26-7.93l-6.52 5.02C9.46 39.56 16.19 44 24 44z"
+            />
+            <path
+              fill="#1976D2"
+              d="M43.61 20.08H42V20H24v8h11.3a12.04 12.04 0 0 1-4.08 5.56l.01-.01 6.19 5.24C37 39.15 44 34 44 24c0-1.34-.14-2.65-.39-3.92z"
             />
           </svg>
           Continuar con Google
-        </button>
-
-        <button
-          style={socialButtonStyle}
-          onClick={() => {
-            void signInWithApple();
-          }}
-          disabled={!providerReady.apple || authLoading}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M16.2 12.9c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.5-1.7-3-1.7-1.3-.1-2.4.8-3 .8-.6 0-1.5-.8-2.5-.8-1.3 0-2.5.8-3.1 1.9-1.3 2.2-.3 5.4.9 7.1.6.8 1.2 1.7 2.1 1.6.8 0 1.2-.5 2.3-.5s1.4.5 2.3.5c.9 0 1.5-.8 2.1-1.6.7-1 1-2 1-2-.1 0-2-.8-2-3.1zm-2-6.2c.5-.6.9-1.4.8-2.2-.8 0-1.7.5-2.2 1.1-.5.6-.9 1.5-.8 2.3.9.1 1.7-.4 2.2-1.2z"
-            />
-          </svg>
-          Continuar con Apple
-        </button>
-
-        <button
-          style={socialButtonStyle}
-          onClick={() => {
-            void signInWithMicrosoft();
-          }}
-          disabled={authLoading}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#F25022" d="M2 2h9v9H2z" />
-            <path fill="#7FBA00" d="M13 2h9v9h-9z" />
-            <path fill="#00A4EF" d="M2 13h9v9H2z" />
-            <path fill="#FFB900" d="M13 13h9v9h-9z" />
-          </svg>
-          Continuar con Microsoft
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.8 }}>
@@ -136,9 +128,26 @@ export function AuthGate({ onAuthenticated }: Props) {
           <div style={{ flex: 1, height: 1, background: "var(--kv-border)" }} />
         </div>
 
-        <input placeholder="Ingresa tu correo" style={inputStyle} />
+        <input
+          placeholder="Ingresa tu correo"
+          style={inputStyle}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
+        />
 
-        <button style={primaryStyle} disabled>
+        <button
+          style={
+            isValidEmail
+              ? {
+                  ...primaryStyle,
+                  cursor: "pointer",
+                  opacity: 1,
+                }
+              : primaryStyle
+          }
+          disabled={!isValidEmail}
+        >
           Continuar
         </button>
 
@@ -149,7 +158,7 @@ export function AuthGate({ onAuthenticated }: Props) {
         )}
 
         <div style={{ fontSize: 12, textAlign: "center", opacity: 0.75 }}>
-          Al continuar, aceptas nuestros términos y política de privacidad.
+          Al continuar, aceptas nuestros terminos y politica de privacidad.
         </div>
       </div>
     </div>

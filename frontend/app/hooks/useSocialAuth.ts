@@ -18,6 +18,16 @@ type MicrosoftMe = {
 
 type SocialProvider = "google" | "apple" | "microsoft";
 
+type SocialAuthPayload = {
+  provider: SocialProvider;
+  user: {
+    name: string;
+    email: string;
+    subscription: User["subscription"];
+  };
+  metadata?: Record<string, unknown>;
+};
+
 type UseSocialAuthResult = {
   providerReady: Record<SocialProvider, boolean>;
   authLoading: boolean;
@@ -117,7 +127,7 @@ function randomString(length = 32): string {
 async function runPopupOAuth(url: string): Promise<Record<string, string>> {
   const popup = window.open(url, "oauth_popup", "width=520,height=700");
   if (!popup) {
-    throw new Error("El navegador bloqueó la ventana de autenticación");
+    throw new Error("El navegador bloqueo la ventana de autenticacion");
   }
 
   return await new Promise<Record<string, string>>((resolve, reject) => {
@@ -125,7 +135,7 @@ async function runPopupOAuth(url: string): Promise<Record<string, string>> {
     const timer = window.setInterval(() => {
       if (popup.closed) {
         window.clearInterval(timer);
-        reject(new Error("Autenticación cancelada"));
+        reject(new Error("Autenticacion cancelada"));
         return;
       }
 
@@ -143,13 +153,13 @@ async function runPopupOAuth(url: string): Promise<Record<string, string>> {
         popup.close();
         resolve(result);
       } catch {
-        // Cross-origin while provider page is open: ignore and keep polling.
+        // Cross-origin while provider page is open.
       }
 
       if (Date.now() - started > 120000) {
         window.clearInterval(timer);
         popup.close();
-        reject(new Error("Tiempo de autenticación agotado"));
+        reject(new Error("Tiempo de autenticacion agotado"));
       }
     }, 250);
   });
@@ -163,6 +173,7 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
   });
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -175,8 +186,7 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
       googleScript.async = true;
       googleScript.defer = true;
       googleScript.onload = () => setProviderReady((prev) => ({ ...prev, google: true }));
-      googleScript.onerror = () =>
-        setAuthError("No se pudo cargar Google Sign-In");
+      googleScript.onerror = () => setAuthError("No se pudo cargar Google Sign-In");
       document.head.appendChild(googleScript);
     }
 
@@ -189,11 +199,30 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
       appleScript.async = true;
       appleScript.defer = true;
       appleScript.onload = () => setProviderReady((prev) => ({ ...prev, apple: true }));
-      appleScript.onerror = () =>
-        setAuthError("No se pudo cargar Sign in with Apple");
+      appleScript.onerror = () => setAuthError("No se pudo cargar Sign in with Apple");
       document.head.appendChild(appleScript);
     }
   }, []);
+
+  const sendAuthToBackend = useCallback(
+    async (payload: SocialAuthPayload) => {
+      if (!apiBase) {
+        throw new Error("Falta NEXT_PUBLIC_API_BASE_URL");
+      }
+
+      const response = await fetch(`${apiBase}/auth/social`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "No se pudo registrar autenticacion en backend");
+      }
+    },
+    [apiBase]
+  );
 
   const signInWithGoogle = useCallback(() => {
     logAuthEvent("google", "start");
@@ -207,7 +236,7 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
     const google = window.google;
     if (!google?.accounts?.oauth2) {
       logAuthEvent("google", "sdk_not_ready");
-      setAuthError("Google Sign-In no está disponible todavía");
+      setAuthError("Google Sign-In no esta disponible todavia");
       return;
     }
 
@@ -222,9 +251,10 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
           hasAccessToken: Boolean(tokenResponse?.access_token),
           error: tokenResponse?.error ?? null,
         });
+
         if (tokenResponse?.error || !tokenResponse?.access_token) {
           setAuthLoading(false);
-          setAuthError("No fue posible iniciar sesión con Google");
+          setAuthError("No fue posible iniciar sesion con Google");
           return;
         }
 
@@ -235,24 +265,36 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
           if (!userRes.ok) throw new Error("No se pudo obtener perfil de Google");
           const profile = (await userRes.json()) as GoogleUserInfo;
           if (!profile?.email || profile.email_verified === false) {
-            throw new Error("Google no devolvió un correo verificado");
+            throw new Error("Google no devolvio un correo verificado");
           }
+
           logAuthEvent("google", "profile", {
             email: profile.email,
             emailVerified: profile.email_verified ?? null,
             name: profile.given_name ?? profile.name ?? null,
           });
-          onSuccess({
+
+          const authenticatedUser: User = {
             name: profile.given_name ?? profile.name ?? "Usuario Google",
             email: profile.email,
             subscription: "Free",
+          };
+
+          await sendAuthToBackend({
+            provider: "google",
+            user: authenticatedUser,
+            metadata: {
+              emailVerified: profile.email_verified ?? null,
+            },
           });
+
+          onSuccess(authenticatedUser);
           logAuthEvent("google", "success", { email: profile.email });
         } catch (error) {
           logAuthEvent("google", "error", {
             message: error instanceof Error ? error.message : "unknown_error",
           });
-          setAuthError("Falló la autenticación con Google");
+          setAuthError("Fallo la autenticacion con Google");
         } finally {
           setAuthLoading(false);
         }
@@ -260,12 +302,17 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
     });
 
     tokenClient.requestAccessToken({ prompt: "select_account" });
-  }, [onSuccess]);
+  }, [onSuccess, sendAuthToBackend]);
 
-  const microsoftRedirectUri = useMemo(
-    () => process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI ?? window.location.origin,
-    []
-  );
+  const microsoftRedirectUri = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI) {
+      return process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI;
+    }
+    if (typeof window !== "undefined") {
+      return window.location.origin;
+    }
+    return "";
+  }, []);
 
   const signInWithMicrosoft = useCallback(async () => {
     logAuthEvent("microsoft", "start");
@@ -294,20 +341,12 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
       authUrl.searchParams.set("scope", "openid profile email User.Read");
       authUrl.searchParams.set("state", state);
       authUrl.searchParams.set("prompt", "select_account");
-      logAuthEvent("microsoft", "authorize_url_ready", {
-        tenant,
-        redirectUri: microsoftRedirectUri,
-      });
 
       const params = await runPopupOAuth(authUrl.toString());
-      if (!params.access_token) throw new Error("Microsoft no devolvió token");
+      if (!params.access_token) throw new Error("Microsoft no devolvio token");
       if (params.state !== sessionStorage.getItem("ms_oauth_state")) {
-        throw new Error("State inválido en Microsoft OAuth");
+        throw new Error("State invalido en Microsoft OAuth");
       }
-      logAuthEvent("microsoft", "token_response", {
-        hasAccessToken: Boolean(params.access_token),
-        scope: params.scope ?? null,
-      });
 
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${params.access_token}` },
@@ -315,27 +354,30 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
       if (!meRes.ok) throw new Error("No se pudo obtener perfil de Microsoft");
       const me = (await meRes.json()) as MicrosoftMe;
       const email = me.mail ?? me.userPrincipalName;
-      if (!email) throw new Error("Microsoft no devolvió correo");
-      logAuthEvent("microsoft", "profile", {
-        email,
-        displayName: me.displayName ?? null,
-      });
+      if (!email) throw new Error("Microsoft no devolvio correo");
 
-      onSuccess({
+      const authenticatedUser: User = {
         name: me.displayName ?? "Usuario Microsoft",
         email,
         subscription: "Free",
+      };
+
+      await sendAuthToBackend({
+        provider: "microsoft",
+        user: authenticatedUser,
       });
+
+      onSuccess(authenticatedUser);
       logAuthEvent("microsoft", "success", { email });
     } catch (error) {
       logAuthEvent("microsoft", "error", {
         message: error instanceof Error ? error.message : "unknown_error",
       });
-      setAuthError("Falló la autenticación con Microsoft");
+      setAuthError("Fallo la autenticacion con Microsoft");
     } finally {
       setAuthLoading(false);
     }
-  }, [microsoftRedirectUri, onSuccess]);
+  }, [microsoftRedirectUri, onSuccess, sendAuthToBackend]);
 
   const signInWithApple = useCallback(async () => {
     logAuthEvent("apple", "start");
@@ -348,7 +390,7 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
     }
     if (!window.AppleID?.auth) {
       logAuthEvent("apple", "sdk_not_ready");
-      setAuthError("Apple Sign-In no está disponible todavía");
+      setAuthError("Apple Sign-In no esta disponible todavia");
       return;
     }
 
@@ -365,30 +407,35 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
 
       const response = await window.AppleID.auth.signIn();
       const idToken = response.authorization?.id_token;
-      if (!idToken) throw new Error("Apple no devolvió id_token");
-      logAuthEvent("apple", "token_response", { hasIdToken: Boolean(idToken) });
+      if (!idToken) throw new Error("Apple no devolvio id_token");
 
       const payload = parseJwtPayload(idToken);
       const email = typeof payload?.email === "string" ? payload.email : "";
       const name = typeof payload?.name === "string" ? payload.name : "Usuario Apple";
-      if (!email) throw new Error("Apple no devolvió correo");
-      logAuthEvent("apple", "profile", { email, name });
+      if (!email) throw new Error("Apple no devolvio correo");
 
-      onSuccess({
+      const authenticatedUser: User = {
         name,
         email,
         subscription: "Free",
+      };
+
+      await sendAuthToBackend({
+        provider: "apple",
+        user: authenticatedUser,
       });
+
+      onSuccess(authenticatedUser);
       logAuthEvent("apple", "success", { email });
     } catch (error) {
       logAuthEvent("apple", "error", {
         message: error instanceof Error ? error.message : "unknown_error",
       });
-      setAuthError("Falló la autenticación con Apple");
+      setAuthError("Fallo la autenticacion con Apple");
     } finally {
       setAuthLoading(false);
     }
-  }, [onSuccess]);
+  }, [onSuccess, sendAuthToBackend]);
 
   return {
     providerReady,
