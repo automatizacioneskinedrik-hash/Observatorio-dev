@@ -74,42 +74,41 @@ app.post("/auth/google", async (req, res) => {
     console.log("[auth/google] Token verificado:", { email });
 
     try {
-      // 1. Verificar si el usuario ya existe en BigQuery
-      const [rows] = await bigquery.query({
-        query: `SELECT perfil_confirmado, tipo_caracterizacion FROM \`observatorio-dev.observatorio_aec.usuarios\` WHERE google_id = @googleId`,
-        params: { googleId }
-      });
-
-      let isProfileComplete = false;
-      let tipo_caracterizacion = null;
-
-      if (rows.length === 0) {
-        // 2. Si es nuevo: Crear registro inicial
-        console.log("[auth/google] Creando nuevo usuario en BigQuery");
-        await bigquery.query({
-          query: `INSERT INTO \`observatorio-dev.observatorio_aec.usuarios\` (google_id, email, nombre, perfil_confirmado, fecha_registro) 
-                  VALUES (@googleId, @email, @name, FALSE, CURRENT_TIMESTAMP)`,
-          params: { googleId, email, name }
+        // 1. Usamos 'correo' según esquema de BigQuery
+        const [rows] = await bigquery.query({
+            query: `SELECT perfil_confirmado, tipo_caracterizacion FROM \`observatorio-dev.observatorio_aec.usuarios\` WHERE google_id = @googleId`,
+            params: { googleId }
         });
-        isProfileComplete = false;
-      } else {
-        // 3. Si existe: Obtener estado actual
-        isProfileComplete = rows[0].perfil_confirmado === true;
-        tipo_caracterizacion = rows[0].tipo_caracterizacion ?? null;
-      }
 
-      // Respuesta final al Frontend
-      return res.status(200).json({
-        id: googleId,
-        email: email,
-        name: name,
-        isProfileComplete: isProfileComplete,
-        tipo_caracterizacion: tipo_caracterizacion
-      });
+        let isProfileComplete = false;
+        let tipo_caracterizacion = null;
+
+        if (rows.length === 0) {
+            // 2. Insertamos usando 'correo' (ajustado esquema)
+            await bigquery.query({
+                query: `INSERT INTO \`observatorio-dev.observatorio_aec.usuarios\` (google_id, correo, nombre, perfil_confirmado) 
+                        VALUES (@googleId, @email, @name, FALSE)`,
+                params: { googleId, email, name }
+            });
+            isProfileComplete = false;
+        } else {
+            // 3. Si existe, mapeamos los datos
+            isProfileComplete = rows[0].perfil_confirmado === true;
+            tipo_caracterizacion = rows[0].tipo_caracterizacion ?? null;
+        }
+
+        // Respuesta final al Frontend
+        return res.status(200).json({
+            id: googleId,
+            email: email,
+            name: name,
+            isProfileComplete: isProfileComplete,
+            tipo_caracterizacion: tipo_caracterizacion
+        });
 
     } catch (dbErr) {
-      console.error("Error en BigQuery:", dbErr);
-      return res.status(500).json({ error: "Error de base de datos" });
+        console.error("Error en BigQuery:", dbErr);
+        return res.status(500).json({ error: "Error de base de datos" });
     }
 
   } catch (err) {
