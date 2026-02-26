@@ -1,4 +1,4 @@
-﻿steps:
+steps:
   # ============================
   # 🔹 BACKEND
   # ============================
@@ -22,6 +22,18 @@
     args:
       - push
       - ${_BACKEND_IMAGE}:latest
+
+  - id: deploy-backend
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_BACKEND_SERVICE}
+      - --image=${_BACKEND_IMAGE}:${SHORT_SHA}
+      - --region=europe-southwest1
+      - --platform=managed
+      - --allow-unauthenticated
 
   # ============================
   # 🔹 FRONTEND
@@ -49,6 +61,18 @@
       - push
       - ${_FRONTEND_IMAGE}:latest
 
+  - id: deploy-frontend
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_FRONTEND_SERVICE}
+      - --image=${_FRONTEND_IMAGE}:${SHORT_SHA}
+      - --region=europe-southwest1
+      - --platform=managed
+      - --allow-unauthenticated
+
 # ============================
 # 🔹 VARIABLES
 # ============================
@@ -56,7 +80,6 @@ substitutions:
   _AR_REPO: europe-southwest1-docker.pkg.dev/observatorio-dev/repo-observatorio-dev
   _BACKEND_IMAGE: ${_AR_REPO}/backend
   _FRONTEND_IMAGE: ${_AR_REPO}/frontend
-  _API_BASE_URL: https://backend-970552335718.europe-southwest1.run.app
 
 # ============================
 # 🔹 IMÁGENES RESULTANTES
