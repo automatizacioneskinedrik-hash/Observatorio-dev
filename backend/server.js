@@ -11,7 +11,10 @@ import nodemailer from "nodemailer";
 
 const app = express();
 const googleClient = new OAuth2Client();
-const bigquery = new BigQuery();
+const bigquery = new BigQuery({
+  projectId: process.env.GOOGLE_CLOUD_PROJECT ?? "observatorio-dev",
+});
+const USERS_TABLE = "`observatorio-dev.observatorio_aec.usuarios`";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const GOOGLE_CLIENT_ID =
@@ -73,9 +76,7 @@ app.get("/", (_req, res) => {
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 function normalizeEmail(rawEmail) {
-  const value = String(rawEmail ?? "").trim();
-  const normalized = validator.normalizeEmail(value);
-  return normalized ?? value.toLowerCase();
+  return String(rawEmail ?? "").trim();
 }
 
 function isValidEmail(email) {
@@ -96,6 +97,29 @@ function cleanupAuthStores() {
   for (const [email, record] of verifiedEmails.entries()) {
     if (record.expires_at <= now) verifiedEmails.delete(email);
   }
+}
+
+async function upsertUserRow({ correo, nombre, google_id = null }) {
+  const mergeQuery = `
+    MERGE ${USERS_TABLE} T
+    USING (
+      SELECT @correo AS correo, @nombre AS nombre, @google_id AS google_id
+    ) S
+    ON T.correo = S.correo OR (S.google_id IS NOT NULL AND T.google_id = S.google_id)
+    WHEN MATCHED THEN
+      UPDATE SET
+        correo = COALESCE(S.correo, T.correo),
+        nombre = COALESCE(S.nombre, T.nombre),
+        google_id = COALESCE(T.google_id, S.google_id)
+    WHEN NOT MATCHED THEN
+      INSERT (google_id, correo, nombre, perfil_confirmado)
+      VALUES (S.google_id, S.correo, S.nombre, FALSE)
+  `;
+
+  await bigquery.query({
+    query: mergeQuery,
+    params: { correo, nombre, google_id },
+  });
 }
 
 async function sendOtpEmail(toEmail, code) {
@@ -193,7 +217,7 @@ app.post("/auth/verify-code", async (req, res) => {
   }
 });
 
-// FASE 3 - Registro local (sin DB por ahora)
+// FASE 3 - Registro local
 app.post("/auth/register", async (req, res) => {
   try {
     cleanupAuthStores();
@@ -232,7 +256,12 @@ app.post("/auth/register", async (req, res) => {
       created_at: new Date(),
     };
 
-    // No persistence in DB yet by requirement.
+    await upsertUserRow({
+      correo: email,
+      nombre: name,
+      google_id: null,
+    });
+
     verifiedEmails.delete(email);
 
     return res.status(201).json(user);
@@ -244,70 +273,59 @@ app.post("/auth/register", async (req, res) => {
 
 // Google auth endpoint (token validation).
 app.post("/auth/google", async (req, res) => {
+  const { nombre, correo, google_id } = req.body;
+  const correoNormalizado = normalizeEmail(correo);
+  const nombreLimpio = String(nombre ?? "").trim();
+  const googleIdLimpio = String(google_id ?? "").trim();
+
+  if (!isValidEmail(correoNormalizado)) {
+    return res.status(400).json({ error: "Correo invalido" });
+  }
+  if (!googleIdLimpio) {
+    return res.status(400).json({ error: "google_id requerido" });
+  }
+
   try {
-    const { id_token } = req.body ?? {};
-
-    if (typeof id_token !== "string" || !id_token.trim()) {
-      return res.status(400).json({ error: "id_token requerido" });
-    }
-
-    if (!GOOGLE_CLIENT_ID) {
-      console.error("[auth/google] falta GOOGLE_CLIENT_ID en entorno");
-      return res.status(500).json({ error: "Falta GOOGLE_CLIENT_ID" });
-    }
-
-    const ticket = await googleClient.verifyIdToken({
-      idToken: id_token,
-      audience: GOOGLE_CLIENT_ID,
+    await upsertUserRow({
+      correo: correoNormalizado,
+      nombre: nombreLimpio || null,
+      google_id: googleIdLimpio,
     });
+    
+    const [rows] = await bigquery.query({
+      query: `
+        SELECT google_id, correo, nombre, perfil_confirmado
+        FROM ${USERS_TABLE}
+        WHERE correo = @correo OR google_id = @google_id
+        LIMIT 1
+      `,
+      params: { correo: correoNormalizado, google_id: googleIdLimpio },
+    });
+    const row = rows?.[0] ?? {};
+    const isProfileComplete = Boolean(row.perfil_confirmado);
+    const userId = row.google_id || googleIdLimpio;
+    const email = row.correo || correoNormalizado;
+    const name = row.nombre || nombreLimpio || "Usuario Google";
 
-    const payload = ticket.getPayload();
-    if (!payload?.sub || !payload?.email) {
-      return res.status(401).json({ error: "Token de Google invalido" });
-    }
-
-    const googleId = payload.sub;
-    const email = payload.email;
-    const name = payload.name ?? "";
-
-    console.log("[auth/google] Token verificado:", { email });
-
-    try {
-      const [rows] = await bigquery.query({
-        query:
-          "SELECT perfil_confirmado, tipo_caracterizacion FROM `observatorio-dev.observatorio_aec.usuarios` WHERE google_id = @googleId",
-        params: { googleId },
-      });
-
-      let isProfileComplete = false;
-      let tipo_caracterizacion = null;
-
-      if (rows.length === 0) {
-        await bigquery.query({
-          query:
-            "INSERT INTO `observatorio-dev.observatorio_aec.usuarios` (google_id, correo, nombre, perfil_confirmado) VALUES (@googleId, @email, @name, FALSE)",
-          params: { googleId, email, name },
-        });
-        isProfileComplete = false;
-      } else {
-        isProfileComplete = rows[0].perfil_confirmado === true;
-        tipo_caracterizacion = rows[0].tipo_caracterizacion ?? null;
-      }
-
-      return res.status(200).json({
-        id: googleId,
-        email,
-        name,
-        isProfileComplete,
-        tipo_caracterizacion,
-      });
-    } catch (dbErr) {
-      console.error("Error en BigQuery:", dbErr);
-      return res.status(500).json({ error: "Error de base de datos" });
-    }
-  } catch (err) {
-    console.warn("[auth/google] Error de autenticacion:", err?.message ?? err);
-    return res.status(401).json({ error: "Unauthorized" });
+    // Devolvemos la info al frontend
+    return res.json({
+      id: userId,
+      email,
+      name,
+      isProfileComplete,
+      persistedInBigQuery: true,
+    });
+  } catch (error) {
+    console.error("[auth/google] Error en BigQuery:", error);
+    return res.status(200).json({
+      id: googleIdLimpio,
+      email: correoNormalizado,
+      name: nombreLimpio || "Usuario Google",
+      isProfileComplete: false,
+      persistedInBigQuery: false,
+      warning:
+        "Login exitoso, pero no se pudo guardar en BigQuery. Revisa credenciales/proyecto.",
+    });
   }
 });
 

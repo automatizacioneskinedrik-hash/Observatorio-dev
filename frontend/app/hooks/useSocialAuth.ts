@@ -8,6 +8,7 @@ type GoogleUserInfo = {
   email_verified?: boolean;
   name?: string;
   given_name?: string;
+  sub?: string;
 };
 
 type MicrosoftMe = {
@@ -232,6 +233,11 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
       setAuthError("Falta configurar NEXT_PUBLIC_GOOGLE_CLIENT_ID");
       return;
     }
+    if (!apiBase) {
+      logAuthEvent("google", "config_error", { missingEnv: "NEXT_PUBLIC_API_BASE_URL" });
+      setAuthError("Falta configurar NEXT_PUBLIC_API_BASE_URL");
+      return;
+    }
 
     const google = window.google;
     if (!google?.accounts?.oauth2) {
@@ -267,6 +273,9 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
           if (!profile?.email || profile.email_verified === false) {
             throw new Error("Google no devolvio un correo verificado");
           }
+          if (!profile?.sub) {
+            throw new Error("Google no devolvio el identificador del usuario");
+          }
 
           logAuthEvent("google", "profile", {
             email: profile.email,
@@ -274,27 +283,43 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
             name: profile.given_name ?? profile.name ?? null,
           });
 
+          const backendRes = await fetch(`${apiBase}/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              correo: profile.email,
+              nombre: profile.given_name ?? profile.name ?? "Usuario Google",
+              google_id: profile.sub,
+            }),
+          });
+          const backendData = await backendRes.json().catch(() => ({}));
+          if (!backendRes.ok) {
+            throw new Error(backendData?.error ?? "No se pudo procesar el login en backend");
+          }
+
           const authenticatedUser: User = {
-            name: profile.given_name ?? profile.name ?? "Usuario Google",
-            email: profile.email,
+            name:
+              typeof backendData?.name === "string" && backendData.name.trim()
+                ? backendData.name
+                : profile.given_name ?? profile.name ?? "Usuario Google",
+            email:
+              typeof backendData?.email === "string" && backendData.email.trim()
+                ? backendData.email
+                : profile.email,
             subscription: "Free",
           };
-
-          await sendAuthToBackend({
-            provider: "google",
-            user: authenticatedUser,
-            metadata: {
-              emailVerified: profile.email_verified ?? null,
-            },
-          });
 
           onSuccess(authenticatedUser);
           logAuthEvent("google", "success", { email: profile.email });
         } catch (error) {
+          const message =
+            error instanceof Error && error.message
+              ? error.message
+              : "Fallo la autenticacion con Google";
           logAuthEvent("google", "error", {
-            message: error instanceof Error ? error.message : "unknown_error",
+            message,
           });
-          setAuthError("Fallo la autenticacion con Google");
+          setAuthError(message);
         } finally {
           setAuthLoading(false);
         }
@@ -302,7 +327,7 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
     });
 
     tokenClient.requestAccessToken({ prompt: "select_account" });
-  }, [onSuccess, sendAuthToBackend]);
+  }, [apiBase, onSuccess]);
 
   const microsoftRedirectUri = useMemo(() => {
     if (process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI) {
