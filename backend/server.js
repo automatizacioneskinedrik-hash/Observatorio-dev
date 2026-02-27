@@ -43,6 +43,7 @@ const CORS_ORIGINS = (
 const otpStore = new Map();
 const verifiedEmails = new Map();
 let mailTransporter = null;
+let bqUserTableColumnsCache = null;
 
 if (SMTP_HOST && SMTP_USER && SMTP_PASS && SMTP_FROM) {
   mailTransporter = nodemailer.createTransport({
@@ -102,6 +103,20 @@ function cleanupAuthStores() {
   for (const [email, record] of verifiedEmails.entries()) {
     if (record.expires_at <= now) verifiedEmails.delete(email);
   }
+}
+
+async function getUserTableColumns() {
+  if (bqUserTableColumnsCache) return bqUserTableColumnsCache;
+
+  const [rows] = await bigquery.query({
+    query: `SELECT column_name FROM \`${BQ_PROJECT_ID}.${BQ_DATASET}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name = @tableName`,
+    params: { tableName: BQ_TABLE },
+  });
+
+  bqUserTableColumnsCache = new Set(
+    rows.map((r) => String(r.column_name ?? "").toLowerCase()).filter(Boolean)
+  );
+  return bqUserTableColumnsCache;
 }
 
 async function sendOtpEmail(toEmail, code) {
@@ -199,7 +214,7 @@ app.post("/auth/verify-code", async (req, res) => {
   }
 });
 
-// FASE 3 - Registro local (sin DB por ahora)
+// FASE 3 - Registro local con persistencia en BigQuery
 app.post("/auth/register", async (req, res) => {
   try {
     cleanupAuthStores();
@@ -233,12 +248,59 @@ app.post("/auth/register", async (req, res) => {
       id: uuidv4(),
       email,
       name,
-      password_hash,
       provider: "local",
       created_at: new Date(),
     };
 
-    // No persistence in DB yet by requirement.
+    const columns = await getUserTableColumns();
+
+    if (columns.has("correo")) {
+      const [existingRows] = await bigquery.query({
+        query: `SELECT correo FROM ${BQ_TABLE_REF} WHERE correo = @email LIMIT 1`,
+        params: { email },
+      });
+
+      if (existingRows.length > 0) {
+        return res.status(409).json({ error: "El correo ya existe" });
+      }
+    }
+
+    const insertCandidates = [
+      ["id", "id", user.id],
+      ["google_id", "googleId", null],
+      ["correo", "email", email],
+      ["nombre", "name", name],
+      ["password_hash", "passwordHash", password_hash],
+      ["provider", "provider", "local"],
+      ["perfil_confirmado", "perfilConfirmado", false],
+      ["created_at", "createdAt", user.created_at],
+    ];
+
+    const insertColumns = [];
+    const insertParams = {};
+
+    for (const [columnName, paramName, value] of insertCandidates) {
+      if (!columns.has(columnName)) continue;
+      insertColumns.push(columnName);
+      insertParams[paramName] = value;
+    }
+
+    if (insertColumns.length === 0) {
+      return res
+        .status(500)
+        .json({ error: "La tabla de usuarios no tiene columnas compatibles" });
+    }
+
+    const valuesSql = insertColumns.map((c) => {
+      const match = insertCandidates.find(([columnName]) => columnName === c);
+      return `@${match[1]}`;
+    });
+
+    await bigquery.query({
+      query: `INSERT INTO ${BQ_TABLE_REF} (${insertColumns.join(", ")}) VALUES (${valuesSql.join(", ")})`,
+      params: insertParams,
+    });
+
     verifiedEmails.delete(email);
 
     return res.status(201).json(user);
