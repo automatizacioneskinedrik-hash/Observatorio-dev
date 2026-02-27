@@ -128,7 +128,10 @@ export default function Home() {
               transition: "all 300ms ease",
             }}
           >
-            Observatorio - AEC
+            <span style={{ color: "#FFFFFF", textShadow: "0 0 1px #065F46, 0 0 2px #065F46" }}>
+              AECCO
+            </span>{" "}
+            <span style={{ color: "#065F46", fontWeight: 650 }}>IA</span>
           </div>
 
           <Chat

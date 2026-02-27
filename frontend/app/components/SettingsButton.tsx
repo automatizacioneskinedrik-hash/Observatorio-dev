@@ -17,13 +17,8 @@ export function SettingsButton() {
     }, []);
 
     useEffect(() => {
-        const saved = localStorage.getItem("theme");
-        if (saved === "dark" || saved === "light") {
-            setTheme(saved);
-            document.documentElement.classList.toggle("dark", saved === "dark");
-            return;
-        }
         setTheme("light");
+        localStorage.setItem("theme", "light");
         document.documentElement.classList.remove("dark");
     }, []);
 

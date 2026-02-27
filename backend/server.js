@@ -512,7 +512,7 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content:
-            "Eres el observatorio AEC. Responde breve, claro y en espanol. Presentate como un observatorio conversacional.",
+            "Eres AECCO IA. Responde breve, claro y en espanol. Presentate como AECCO IA, una IA conversacional.",
         },
         { role: "user", content: message.trim() },
       ],

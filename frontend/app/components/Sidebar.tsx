@@ -118,10 +118,13 @@ export function Sidebar({
       >
         {menuOpen ? (
           <>
-            Observatorio <span style={{ color: "#57f2c7", fontWeight: 650 }}>AEC</span>
+            <span style={{ color: "#FFFFFF", textShadow: "0 0 1px #065F46, 0 0 2px #065F46" }}>
+              AECCO
+            </span>{" "}
+            <span style={{ color: "#065F46", fontWeight: 650 }}>IA</span>
           </>
         ) : (
-          "OA"
+          "AI"
         )}
       </button>
 
