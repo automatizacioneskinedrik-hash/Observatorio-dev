@@ -11,14 +11,17 @@ import nodemailer from "nodemailer";
 
 const app = express();
 const googleClient = new OAuth2Client();
-const bigquery = new BigQuery({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT ?? "observatorio-dev",
-});
-const USERS_TABLE = "`observatorio-dev.observatorio_aec.usuarios`";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ?? process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const BQ_PROJECT_ID = process.env.BQ_PROJECT_ID ?? "observatorio-dev";
+const BQ_DATASET = process.env.BQ_DATASET ?? "observatorio_aec";
+const BQ_TABLE = process.env.BQ_TABLE ?? "usuarios";
+const BQ_TABLE_REF = `\`${BQ_PROJECT_ID}.${BQ_DATASET}.${BQ_TABLE}\``;
+const bigquery = new BigQuery(
+  BQ_PROJECT_ID ? { projectId: BQ_PROJECT_ID } : {}
+);
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const VERIFIED_TTL_MS = 30 * 60 * 1000;
@@ -40,6 +43,7 @@ const CORS_ORIGINS = (
 const otpStore = new Map();
 const verifiedEmails = new Map();
 let mailTransporter = null;
+let bqUserTableColumnsCache = null;
 
 if (SMTP_HOST && SMTP_USER && SMTP_PASS && SMTP_FROM) {
   mailTransporter = nodemailer.createTransport({
@@ -76,7 +80,9 @@ app.get("/", (_req, res) => {
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 function normalizeEmail(rawEmail) {
-  return String(rawEmail ?? "").trim();
+  const value = String(rawEmail ?? "").trim();
+  const normalized = validator.normalizeEmail(value);
+  return normalized ?? value.toLowerCase();
 }
 
 function isValidEmail(email) {
@@ -99,27 +105,127 @@ function cleanupAuthStores() {
   }
 }
 
-async function upsertUserRow({ correo, nombre, google_id = null }) {
-  const mergeQuery = `
-    MERGE ${USERS_TABLE} T
-    USING (
-      SELECT @correo AS correo, @nombre AS nombre, @google_id AS google_id
-    ) S
-    ON T.correo = S.correo OR (S.google_id IS NOT NULL AND T.google_id = S.google_id)
-    WHEN MATCHED THEN
-      UPDATE SET
-        correo = COALESCE(S.correo, T.correo),
-        nombre = COALESCE(S.nombre, T.nombre),
-        google_id = COALESCE(T.google_id, S.google_id)
-    WHEN NOT MATCHED THEN
-      INSERT (google_id, correo, nombre, perfil_confirmado)
-      VALUES (S.google_id, S.correo, S.nombre, FALSE)
-  `;
+async function getUserTableColumns() {
+  if (bqUserTableColumnsCache) return bqUserTableColumnsCache;
+
+  const [rows] = await bigquery.query({
+    query: `SELECT column_name FROM \`${BQ_PROJECT_ID}.${BQ_DATASET}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name = @tableName`,
+    params: { tableName: BQ_TABLE },
+  });
+
+  bqUserTableColumnsCache = new Set(
+    rows.map((r) => String(r.column_name ?? "").toLowerCase()).filter(Boolean)
+  );
+  return bqUserTableColumnsCache;
+}
+
+function pickPasswordColumn(columns) {
+  if (columns.has("password_hash")) return "password_hash";
+  if (columns.has("contrasena")) return "contrasena";
+  return null;
+}
+
+async function upsertUserByEmail({
+  email,
+  name,
+  provider,
+  googleId,
+  passwordHash,
+  profileConfirmed,
+}) {
+  const columns = await getUserTableColumns();
+  if (!columns.has("correo")) {
+    throw new Error("La tabla de usuarios no contiene la columna correo");
+  }
+
+  const [existingRows] = await bigquery.query({
+    query: `SELECT correo FROM ${BQ_TABLE_REF} WHERE correo = @email LIMIT 1`,
+    params: { email },
+  });
+  const exists = existingRows.length > 0;
+
+  const pwdColumn = pickPasswordColumn(columns);
+
+  if (exists) {
+    const updateParts = [];
+    const params = { email };
+
+    if (name && columns.has("nombre")) {
+      updateParts.push("nombre = @name");
+      params.name = name;
+    }
+    if (provider && columns.has("provider")) {
+      updateParts.push("provider = @provider");
+      params.provider = provider;
+    }
+    if (typeof googleId === "string" && columns.has("google_id")) {
+      updateParts.push("google_id = @googleId");
+      params.googleId = googleId;
+    }
+    if (typeof profileConfirmed === "boolean" && columns.has("perfil_confirmado")) {
+      updateParts.push("perfil_confirmado = @profileConfirmed");
+      params.profileConfirmed = profileConfirmed;
+    }
+    if (passwordHash && pwdColumn) {
+      updateParts.push(`${pwdColumn} = @passwordHash`);
+      params.passwordHash = passwordHash;
+    }
+
+    if (updateParts.length > 0) {
+      await bigquery.query({
+        query: `UPDATE ${BQ_TABLE_REF} SET ${updateParts.join(", ")} WHERE correo = @email`,
+        params,
+      });
+    }
+    return { exists: true };
+  }
+
+  const insertColumns = ["correo"];
+  const insertValues = ["@email"];
+  const params = { email };
+
+  if (columns.has("id")) {
+    insertColumns.push("id");
+    insertValues.push("@id");
+    params.id = uuidv4();
+  }
+  if (name && columns.has("nombre")) {
+    insertColumns.push("nombre");
+    insertValues.push("@name");
+    params.name = name;
+  }
+  if (provider && columns.has("provider")) {
+    insertColumns.push("provider");
+    insertValues.push("@provider");
+    params.provider = provider;
+  }
+  if (typeof googleId === "string" && columns.has("google_id")) {
+    insertColumns.push("google_id");
+    insertValues.push("@googleId");
+    params.googleId = googleId;
+  }
+  if (typeof profileConfirmed === "boolean" && columns.has("perfil_confirmado")) {
+    insertColumns.push("perfil_confirmado");
+    insertValues.push("@profileConfirmed");
+    params.profileConfirmed = profileConfirmed;
+  }
+  if (passwordHash && pwdColumn) {
+    insertColumns.push(pwdColumn);
+    insertValues.push("@passwordHash");
+    params.passwordHash = passwordHash;
+  }
+  if (columns.has("created_at")) {
+    insertColumns.push("created_at");
+    insertValues.push("@createdAt");
+    params.createdAt = new Date();
+  }
 
   await bigquery.query({
-    query: mergeQuery,
-    params: { correo, nombre, google_id },
+    query: `INSERT INTO ${BQ_TABLE_REF} (${insertColumns.join(", ")}) VALUES (${insertValues.join(", ")})`,
+    params,
   });
+
+  return { exists: false };
 }
 
 async function sendOtpEmail(toEmail, code) {
@@ -217,7 +323,7 @@ app.post("/auth/verify-code", async (req, res) => {
   }
 });
 
-// FASE 3 - Registro local
+// FASE 3 - Registro local con persistencia en BigQuery
 app.post("/auth/register", async (req, res) => {
   try {
     cleanupAuthStores();
@@ -251,16 +357,21 @@ app.post("/auth/register", async (req, res) => {
       id: uuidv4(),
       email,
       name,
-      password_hash,
       provider: "local",
       created_at: new Date(),
     };
 
-    await upsertUserRow({
-      correo: email,
-      nombre: name,
-      google_id: null,
+    const upsert = await upsertUserByEmail({
+      email,
+      name,
+      provider: "local",
+      passwordHash: password_hash,
+      profileConfirmed: true,
     });
+
+    if (upsert.exists) {
+      return res.status(409).json({ error: "El correo ya existe" });
+    }
 
     verifiedEmails.delete(email);
 
@@ -273,72 +384,100 @@ app.post("/auth/register", async (req, res) => {
 
 // Google auth endpoint (token validation).
 app.post("/auth/google", async (req, res) => {
-  const { nombre, correo, google_id } = req.body;
-  const correoNormalizado = normalizeEmail(correo);
-  const nombreLimpio = String(nombre ?? "").trim();
-  const googleIdLimpio = String(google_id ?? "").trim();
-
-  if (!isValidEmail(correoNormalizado)) {
-    return res.status(400).json({ error: "Correo invalido" });
-  }
-  if (!googleIdLimpio) {
-    return res.status(400).json({ error: "google_id requerido" });
-  }
-
   try {
-    await upsertUserRow({
-      correo: correoNormalizado,
-      nombre: nombreLimpio || null,
-      google_id: googleIdLimpio,
-    });
-    
-    const [rows] = await bigquery.query({
-      query: `
-        SELECT google_id, correo, nombre, perfil_confirmado
-        FROM ${USERS_TABLE}
-        WHERE correo = @correo OR google_id = @google_id
-        LIMIT 1
-      `,
-      params: { correo: correoNormalizado, google_id: googleIdLimpio },
-    });
-    const row = rows?.[0] ?? {};
-    const isProfileComplete = Boolean(row.perfil_confirmado);
-    const userId = row.google_id || googleIdLimpio;
-    const email = row.correo || correoNormalizado;
-    const name = row.nombre || nombreLimpio || "Usuario Google";
+    const { id_token } = req.body ?? {};
 
-    // Devolvemos la info al frontend
-    return res.json({
-      id: userId,
-      email,
-      name,
-      isProfileComplete,
-      persistedInBigQuery: true,
+    if (typeof id_token !== "string" || !id_token.trim()) {
+      return res.status(400).json({ error: "id_token requerido" });
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+      console.error("[auth/google] falta GOOGLE_CLIENT_ID en entorno");
+      return res.status(500).json({ error: "Falta GOOGLE_CLIENT_ID" });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: id_token,
+      audience: GOOGLE_CLIENT_ID,
     });
-  } catch (error) {
-    console.error("[auth/google] Error en BigQuery:", error);
-    return res.status(200).json({
-      id: googleIdLimpio,
-      email: correoNormalizado,
-      name: nombreLimpio || "Usuario Google",
-      isProfileComplete: false,
-      persistedInBigQuery: false,
-      warning:
-        "Login exitoso, pero no se pudo guardar en BigQuery. Revisa credenciales/proyecto.",
-    });
+
+    const payload = ticket.getPayload();
+    if (!payload?.sub || !payload?.email) {
+      return res.status(401).json({ error: "Token de Google invalido" });
+    }
+
+    const googleId = payload.sub;
+    const email = payload.email;
+    const name = payload.name ?? "";
+
+    console.log("[auth/google] Token verificado:", { email });
+
+    try {
+      const [rows] = await bigquery.query({
+        query: `SELECT perfil_confirmado, tipo_caracterizacion FROM ${BQ_TABLE_REF} WHERE google_id = @googleId`,
+        params: { googleId },
+      });
+
+      let isProfileComplete = false;
+      let tipo_caracterizacion = null;
+
+      if (rows.length === 0) {
+        await bigquery.query({
+          query: `INSERT INTO ${BQ_TABLE_REF} (google_id, correo, nombre, perfil_confirmado) VALUES (@googleId, @email, @name, FALSE)`,
+          params: { googleId, email, name },
+        });
+        isProfileComplete = false;
+      } else {
+        isProfileComplete = rows[0].perfil_confirmado === true;
+        tipo_caracterizacion = rows[0].tipo_caracterizacion ?? null;
+      }
+
+      return res.status(200).json({
+        id: googleId,
+        email,
+        name,
+        isProfileComplete,
+        tipo_caracterizacion,
+      });
+    } catch (dbErr) {
+      console.error("Error en BigQuery:", dbErr);
+      return res.status(500).json({ error: "Error de base de datos" });
+    }
+  } catch (err) {
+    console.warn("[auth/google] Error de autenticacion:", err?.message ?? err);
+    return res.status(401).json({ error: "Unauthorized" });
   }
 });
 
 app.post("/auth/social", (req, res) => {
   const { provider, user, metadata } = req.body ?? {};
-  const authEvent = {
-    provider,
-    user,
-    metadata,
-    authenticatedAt: new Date().toISOString(),
-  };
-  console.log("[auth/social]", JSON.stringify(authEvent));
-  return res.status(201).json({ ok: true, data: authEvent });
+  const email = normalizeEmail(user?.email);
+  const name = String(user?.name ?? "").trim();
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: "Email invalido" });
+  }
+
+  upsertUserByEmail({
+    email,
+    name,
+    provider: typeof provider === "string" ? provider : "social",
+    profileConfirmed: true,
+  })
+    .then(() => {
+      const authEvent = {
+        provider,
+        user: { ...user, email, name },
+        metadata,
+        authenticatedAt: new Date().toISOString(),
+      };
+      console.log("[auth/social]", JSON.stringify(authEvent));
+      return res.status(201).json({ ok: true, data: authEvent });
+    })
+    .catch((err) => {
+      console.error("[auth/social] error:", err);
+      return res.status(500).json({ error: "Error de base de datos" });
+    });
 });
 
 app.post("/chat", async (req, res) => {
