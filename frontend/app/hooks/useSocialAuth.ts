@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { User } from "../types/user";
 
 type GoogleUserInfo = {
+  sub?: string;
   email: string;
   email_verified?: boolean;
   name?: string;
@@ -284,6 +285,7 @@ export function useSocialAuth(onSuccess: (user: User) => void): UseSocialAuthRes
             provider: "google",
             user: authenticatedUser,
             metadata: {
+              googleId: profile.sub ?? null,
               emailVerified: profile.email_verified ?? null,
             },
           });

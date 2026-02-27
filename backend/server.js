@@ -81,7 +81,14 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 function normalizeEmail(rawEmail) {
   const value = String(rawEmail ?? "").trim();
-  const normalized = validator.normalizeEmail(value);
+  const normalized = validator.normalizeEmail(value, {
+    all_lowercase: true,
+    gmail_remove_dots: false,
+    gmail_remove_subaddress: false,
+    outlookdotcom_remove_subaddress: false,
+    yahoo_remove_subaddress: false,
+    icloud_remove_subaddress: false,
+  });
   return normalized ?? value.toLowerCase();
 }
 
@@ -453,6 +460,11 @@ app.post("/auth/social", (req, res) => {
   const { provider, user, metadata } = req.body ?? {};
   const email = normalizeEmail(user?.email);
   const name = String(user?.name ?? "").trim();
+  const googleIdRaw = metadata?.googleId;
+  const googleId =
+    typeof googleIdRaw === "string" && googleIdRaw.trim()
+      ? googleIdRaw.trim()
+      : undefined;
 
   if (!isValidEmail(email)) {
     return res.status(400).json({ error: "Email invalido" });
@@ -462,6 +474,7 @@ app.post("/auth/social", (req, res) => {
     email,
     name,
     provider: typeof provider === "string" ? provider : "social",
+    googleId: provider === "google" ? googleId : undefined,
     profileConfirmed: true,
   })
     .then(() => {
