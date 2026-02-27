@@ -5,7 +5,7 @@ import { IconSettings, IconUser, IconTheme } from "./icons";
 export function SettingsButton() {
     const [open, setOpen] = useState(false);
     const wrapRef = useRef<HTMLDivElement>(null);
-    const [theme, setTheme] = useState<"dark" | "light">("dark");
+    const [theme, setTheme] = useState<"dark" | "light">("light");
 
     useEffect(() => {
         const onDown = (e: MouseEvent) => {
@@ -16,10 +16,22 @@ export function SettingsButton() {
         return () => document.removeEventListener("mousedown", onDown);
     }, []);
 
+    useEffect(() => {
+        const saved = localStorage.getItem("theme");
+        if (saved === "dark" || saved === "light") {
+            setTheme(saved);
+            document.documentElement.classList.toggle("dark", saved === "dark");
+            return;
+        }
+        setTheme("light");
+        document.documentElement.classList.remove("dark");
+    }, []);
+
     const toggleTheme = () => {
         const root = document.documentElement;
-        const next = root.classList.contains("light") ? "dark" : "light";
-        root.classList.toggle("light", next === "light");
+        const next = root.classList.contains("dark") ? "light" : "dark";
+        root.classList.toggle("dark", next === "dark");
+        localStorage.setItem("theme", next);
         setTheme(next);
     };
 

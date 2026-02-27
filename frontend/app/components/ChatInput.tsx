@@ -50,10 +50,12 @@ export function ChatInput({
         style={{
           width: 44,
           height: 44,
-          background: "var(--kv-accent)",
-          border: "1px solid var(--kv-accent-border)",
+          background: canSend ? "var(--kv-send-active)" : "var(--kv-send-disabled)",
+          border: canSend
+            ? "1px solid var(--kv-send-active)"
+            : "1px solid var(--kv-send-disabled)",
           color: "#ffffff",
-          boxShadow: "0 10px 26px rgba(0,0,0,0.14)",
+          boxShadow: canSend ? "0 10px 26px var(--kv-send-soft)" : "none",
           borderRadius: "50%",
           display: "flex",
           alignItems: "center",
@@ -61,6 +63,16 @@ export function ChatInput({
           cursor: canSend ? "pointer" : "not-allowed",
           opacity: canSend ? 1 : 0.6,
           transition: "all 200ms ease",
+        }}
+        onMouseEnter={(e) => {
+          if (!canSend) return;
+          e.currentTarget.style.background = "var(--kv-send-hover)";
+          e.currentTarget.style.border = "1px solid var(--kv-send-hover)";
+        }}
+        onMouseLeave={(e) => {
+          if (!canSend) return;
+          e.currentTarget.style.background = "var(--kv-send-active)";
+          e.currentTarget.style.border = "1px solid var(--kv-send-active)";
         }}
         title={loading ? "Esperando respuesta..." : "Enviar"}
       >
