@@ -29,18 +29,18 @@ textarea::placeholder {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--kv-scrollbar-thumb);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.30);
+  background: var(--kv-scrollbar-thumb-hover);
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: var(--kv-scrollbar-thumb) transparent;
 }
 
 /* =========================
@@ -120,6 +120,10 @@ textarea::placeholder {
   --kv-chat-user-border: #D1D5DB;
   --kv-chat-bot-bg: #FFFFFF;
   --kv-chat-bot-border: #D1D5DB;
+  --kv-brand-main: #111827;
+  --kv-brand-accent: #065F46;
+  --kv-scrollbar-thumb: rgba(17, 24, 39, 0.16);
+  --kv-scrollbar-thumb-hover: rgba(17, 24, 39, 0.28);
 }
 
 /* =========================
@@ -159,6 +163,10 @@ html.dark {
   --kv-chat-user-border: #10B981;
   --kv-chat-bot-bg: #064E3B;
   --kv-chat-bot-border: #065F46;
+  --kv-brand-main: #FFFFFF;
+  --kv-brand-accent: #10B981;
+  --kv-scrollbar-thumb: rgba(167, 243, 208, 0.22);
+  --kv-scrollbar-thumb-hover: rgba(167, 243, 208, 0.36);
 }
 
 body {

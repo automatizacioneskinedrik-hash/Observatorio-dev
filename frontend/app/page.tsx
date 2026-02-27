@@ -128,10 +128,8 @@ export default function Home() {
               transition: "all 300ms ease",
             }}
           >
-            <span style={{ color: "#FFFFFF", textShadow: "0 0 1px #065F46, 0 0 2px #065F46" }}>
-              AECCO
-            </span>{" "}
-            <span style={{ color: "#065F46", fontWeight: 650 }}>IA</span>
+            <span style={{ color: "var(--kv-brand-main)", fontWeight: 700 }}>AECCO</span>{" "}
+            <span style={{ color: "var(--kv-brand-accent)", fontWeight: 700 }}>IA</span>
           </div>
 
           <Chat
