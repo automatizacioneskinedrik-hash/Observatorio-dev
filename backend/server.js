@@ -11,11 +11,17 @@ import nodemailer from "nodemailer";
 
 const app = express();
 const googleClient = new OAuth2Client();
-const bigquery = new BigQuery();
 
 const PORT = Number(process.env.PORT ?? 8080);
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ?? process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const BQ_PROJECT_ID = process.env.BQ_PROJECT_ID ?? "observatorio-dev";
+const BQ_DATASET = process.env.BQ_DATASET ?? "observatorio_aec";
+const BQ_TABLE = process.env.BQ_TABLE ?? "usuarios";
+const BQ_TABLE_REF = `\`${BQ_PROJECT_ID}.${BQ_DATASET}.${BQ_TABLE}\``;
+const bigquery = new BigQuery(
+  BQ_PROJECT_ID ? { projectId: BQ_PROJECT_ID } : {}
+);
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const VERIFIED_TTL_MS = 30 * 60 * 1000;
@@ -274,8 +280,7 @@ app.post("/auth/google", async (req, res) => {
 
     try {
       const [rows] = await bigquery.query({
-        query:
-          "SELECT perfil_confirmado, tipo_caracterizacion FROM `observatorio-dev.observatorio_aec.usuarios` WHERE google_id = @googleId",
+        query: `SELECT perfil_confirmado, tipo_caracterizacion FROM ${BQ_TABLE_REF} WHERE google_id = @googleId`,
         params: { googleId },
       });
 
@@ -284,8 +289,7 @@ app.post("/auth/google", async (req, res) => {
 
       if (rows.length === 0) {
         await bigquery.query({
-          query:
-            "INSERT INTO `observatorio-dev.observatorio_aec.usuarios` (google_id, correo, nombre, perfil_confirmado) VALUES (@googleId, @email, @name, FALSE)",
+          query: `INSERT INTO ${BQ_TABLE_REF} (google_id, correo, nombre, perfil_confirmado) VALUES (@googleId, @email, @name, FALSE)`,
           params: { googleId, email, name },
         });
         isProfileComplete = false;
