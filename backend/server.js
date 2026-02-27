@@ -43,6 +43,7 @@ const CORS_ORIGINS = (
 const otpStore = new Map();
 const verifiedEmails = new Map();
 let mailTransporter = null;
+let bqUserTableColumnsCache = null;
 
 if (SMTP_HOST && SMTP_USER && SMTP_PASS && SMTP_FROM) {
   mailTransporter = nodemailer.createTransport({
@@ -102,6 +103,129 @@ function cleanupAuthStores() {
   for (const [email, record] of verifiedEmails.entries()) {
     if (record.expires_at <= now) verifiedEmails.delete(email);
   }
+}
+
+async function getUserTableColumns() {
+  if (bqUserTableColumnsCache) return bqUserTableColumnsCache;
+
+  const [rows] = await bigquery.query({
+    query: `SELECT column_name FROM \`${BQ_PROJECT_ID}.${BQ_DATASET}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name = @tableName`,
+    params: { tableName: BQ_TABLE },
+  });
+
+  bqUserTableColumnsCache = new Set(
+    rows.map((r) => String(r.column_name ?? "").toLowerCase()).filter(Boolean)
+  );
+  return bqUserTableColumnsCache;
+}
+
+function pickPasswordColumn(columns) {
+  if (columns.has("password_hash")) return "password_hash";
+  if (columns.has("contrasena")) return "contrasena";
+  return null;
+}
+
+async function upsertUserByEmail({
+  email,
+  name,
+  provider,
+  googleId,
+  passwordHash,
+  profileConfirmed,
+}) {
+  const columns = await getUserTableColumns();
+  if (!columns.has("correo")) {
+    throw new Error("La tabla de usuarios no contiene la columna correo");
+  }
+
+  const [existingRows] = await bigquery.query({
+    query: `SELECT correo FROM ${BQ_TABLE_REF} WHERE correo = @email LIMIT 1`,
+    params: { email },
+  });
+  const exists = existingRows.length > 0;
+
+  const pwdColumn = pickPasswordColumn(columns);
+
+  if (exists) {
+    const updateParts = [];
+    const params = { email };
+
+    if (name && columns.has("nombre")) {
+      updateParts.push("nombre = @name");
+      params.name = name;
+    }
+    if (provider && columns.has("provider")) {
+      updateParts.push("provider = @provider");
+      params.provider = provider;
+    }
+    if (typeof googleId === "string" && columns.has("google_id")) {
+      updateParts.push("google_id = @googleId");
+      params.googleId = googleId;
+    }
+    if (typeof profileConfirmed === "boolean" && columns.has("perfil_confirmado")) {
+      updateParts.push("perfil_confirmado = @profileConfirmed");
+      params.profileConfirmed = profileConfirmed;
+    }
+    if (passwordHash && pwdColumn) {
+      updateParts.push(`${pwdColumn} = @passwordHash`);
+      params.passwordHash = passwordHash;
+    }
+
+    if (updateParts.length > 0) {
+      await bigquery.query({
+        query: `UPDATE ${BQ_TABLE_REF} SET ${updateParts.join(", ")} WHERE correo = @email`,
+        params,
+      });
+    }
+    return { exists: true };
+  }
+
+  const insertColumns = ["correo"];
+  const insertValues = ["@email"];
+  const params = { email };
+
+  if (columns.has("id")) {
+    insertColumns.push("id");
+    insertValues.push("@id");
+    params.id = uuidv4();
+  }
+  if (name && columns.has("nombre")) {
+    insertColumns.push("nombre");
+    insertValues.push("@name");
+    params.name = name;
+  }
+  if (provider && columns.has("provider")) {
+    insertColumns.push("provider");
+    insertValues.push("@provider");
+    params.provider = provider;
+  }
+  if (typeof googleId === "string" && columns.has("google_id")) {
+    insertColumns.push("google_id");
+    insertValues.push("@googleId");
+    params.googleId = googleId;
+  }
+  if (typeof profileConfirmed === "boolean" && columns.has("perfil_confirmado")) {
+    insertColumns.push("perfil_confirmado");
+    insertValues.push("@profileConfirmed");
+    params.profileConfirmed = profileConfirmed;
+  }
+  if (passwordHash && pwdColumn) {
+    insertColumns.push(pwdColumn);
+    insertValues.push("@passwordHash");
+    params.passwordHash = passwordHash;
+  }
+  if (columns.has("created_at")) {
+    insertColumns.push("created_at");
+    insertValues.push("@createdAt");
+    params.createdAt = new Date();
+  }
+
+  await bigquery.query({
+    query: `INSERT INTO ${BQ_TABLE_REF} (${insertColumns.join(", ")}) VALUES (${insertValues.join(", ")})`,
+    params,
+  });
+
+  return { exists: false };
 }
 
 async function sendOtpEmail(toEmail, code) {
@@ -199,7 +323,7 @@ app.post("/auth/verify-code", async (req, res) => {
   }
 });
 
-// FASE 3 - Registro local (sin DB por ahora)
+// FASE 3 - Registro local con persistencia en BigQuery
 app.post("/auth/register", async (req, res) => {
   try {
     cleanupAuthStores();
@@ -233,12 +357,22 @@ app.post("/auth/register", async (req, res) => {
       id: uuidv4(),
       email,
       name,
-      password_hash,
       provider: "local",
       created_at: new Date(),
     };
 
-    // No persistence in DB yet by requirement.
+    const upsert = await upsertUserByEmail({
+      email,
+      name,
+      provider: "local",
+      passwordHash: password_hash,
+      profileConfirmed: true,
+    });
+
+    if (upsert.exists) {
+      return res.status(409).json({ error: "El correo ya existe" });
+    }
+
     verifiedEmails.delete(email);
 
     return res.status(201).json(user);
@@ -317,14 +451,33 @@ app.post("/auth/google", async (req, res) => {
 
 app.post("/auth/social", (req, res) => {
   const { provider, user, metadata } = req.body ?? {};
-  const authEvent = {
-    provider,
-    user,
-    metadata,
-    authenticatedAt: new Date().toISOString(),
-  };
-  console.log("[auth/social]", JSON.stringify(authEvent));
-  return res.status(201).json({ ok: true, data: authEvent });
+  const email = normalizeEmail(user?.email);
+  const name = String(user?.name ?? "").trim();
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: "Email invalido" });
+  }
+
+  upsertUserByEmail({
+    email,
+    name,
+    provider: typeof provider === "string" ? provider : "social",
+    profileConfirmed: true,
+  })
+    .then(() => {
+      const authEvent = {
+        provider,
+        user: { ...user, email, name },
+        metadata,
+        authenticatedAt: new Date().toISOString(),
+      };
+      console.log("[auth/social]", JSON.stringify(authEvent));
+      return res.status(201).json({ ok: true, data: authEvent });
+    })
+    .catch((err) => {
+      console.error("[auth/social] error:", err);
+      return res.status(500).json({ error: "Error de base de datos" });
+    });
 });
 
 app.post("/chat", async (req, res) => {
