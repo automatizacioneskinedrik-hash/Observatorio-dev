@@ -29,25 +29,24 @@ textarea::placeholder {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--kv-scrollbar-thumb);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.30);
+  background: var(--kv-scrollbar-thumb-hover);
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: var(--kv-scrollbar-thumb) transparent;
 }
 
 /* =========================
    Animations
 ========================= */
 @keyframes kvBounce {
-
   0%,
   80%,
   100% {
@@ -62,7 +61,6 @@ textarea::placeholder {
 }
 
 @keyframes kvWave {
-
   0%,
   100% {
     transform: translateY(0);
@@ -86,78 +84,89 @@ textarea::placeholder {
 }
 
 /* =========================
-   TOKENS K‑Vision (DARK)
+   TOKENS K-Vision (LIGHT default)
 ========================= */
 :root {
-  --kv-text: #e5e7eb;
-  --kv-subtext: rgba(229, 231, 235, 0.72);
+  --kv-text: #111827;
+  --kv-subtext: #4B5563;
 
-  --kv-bg: linear-gradient(135deg,
-      #061612 0%,
-      #041c17 45%,
-      #022e26 100%);
+  --kv-bg: #F6F8F7;
+  --kv-glow: none;
 
+  --kv-panel: #FFFFFF;
+  --kv-panel-strong: #FFFFFF;
+  --kv-surface: #FFFFFF;
+  --kv-input: #FFFFFF;
+  --kv-border: #D1D5DB;
 
-  --kv-panel: rgba(2, 40, 34, 0.65);
-  --kv-panel-strong: rgba(2, 40, 34, 0.85);
+  --kv-accent: #10B981;
+  --kv-accent-bg: #D1FAE5;
+  --kv-accent-border: #10B981;
+  --kv-accent-ring: rgba(16, 185, 129, 0.2);
 
-  --kv-border: rgba(0, 168, 132, 0.22);
+  --kv-send-active: #10B981;
+  --kv-send-hover: #059669;
+  --kv-send-disabled: #9CA3AF;
+  --kv-send-soft: #D1FAE5;
 
-  /* Acento VERDE (el “resaltado”) */
-  --kv-accent: #00a884;
-  --kv-accent-bg: rgba(0, 168, 132, 0.16);
-  --kv-accent-border: rgba(0, 168, 132, 0.40);
-  --kv-accent-ring: rgba(0, 168, 132, 0.18);
+  --kv-popover-bg: #FFFFFF;
+  --kv-popover-border: #D1D5DB;
+  --kv-popover-shadow: 0 18px 50px rgba(17, 24, 39, 0.12);
 
-  /* Popover (settings) */
-  --kv-popover-bg: rgba(0, 45, 38, 0.95);
-  --kv-popover-border: rgba(0, 168, 132, 0.28);
-  --kv-popover-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --kv-gear-bg: #FFFFFF;
+  --kv-gear-border: #D1D5DB;
 
-  /* Botón gear */
-  --kv-gear-bg: rgba(0, 77, 61, 0.45);
-  --kv-gear-border: rgba(0, 168, 132, 0.35);
-  /* Chat bubbles */
-  --kv-chat-user-bg: var(--kv-accent-bg);
-  --kv-chat-user-border: var(--kv-accent-border);
-
-  --kv-chat-bot-bg: var(--kv-panel);
-  --kv-chat-bot-border: var(--kv-border);
-
+  --kv-chat-user-bg: #FFFFFF;
+  --kv-chat-user-border: #D1D5DB;
+  --kv-chat-bot-bg: #FFFFFF;
+  --kv-chat-bot-border: #D1D5DB;
+  --kv-brand-main: #111827;
+  --kv-brand-accent: #065F46;
+  --kv-scrollbar-thumb: rgba(17, 24, 39, 0.16);
+  --kv-scrollbar-thumb-hover: rgba(17, 24, 39, 0.28);
 }
 
 /* =========================
-   TOKENS K‑Vision (LIGHT)
+   TOKENS K-Vision (DARK)
 ========================= */
-html.light {
-  --kv-text: #111827;
-  --kv-subtext: rgba(17, 24, 39, 0.65);
+html.dark {
+  --kv-text: #ECFDF5;
+  --kv-subtext: #A7F3D0;
 
-  --kv-bg: #f3f4f6;
+  --kv-bg: #052E2B;
+  --kv-glow: none;
 
-  --kv-panel: #ffffff;
-  --kv-panel-strong: #f9fafb;
-  --kv-border: rgba(30, 47, 74, 0.14);
+  --kv-panel: #064E3B;
+  --kv-panel-strong: #064E3B;
+  --kv-surface: #064E3B;
+  --kv-input: #064E3B;
+  --kv-border: #065F46;
 
-  /* Mismo acento verde, pero visible en claro */
-  --kv-accent: #008f72;
-  --kv-accent-bg: rgba(0, 143, 114, 0.14);
-  --kv-accent-border: rgba(0, 143, 114, 0.40);
-  --kv-accent-ring: rgba(0, 143, 114, 0.16);
+  --kv-accent: #10B981;
+  --kv-accent-bg: #065F46;
+  --kv-accent-border: #10B981;
+  --kv-accent-ring: rgba(16, 185, 129, 0.24);
 
-  --kv-popover-bg: #ffffff;
-  --kv-popover-border: rgba(30, 47, 74, 0.14);
-  --kv-popover-shadow: 0 18px 50px rgba(17, 24, 39, 0.12);
+  --kv-send-active: #10B981;
+  --kv-send-hover: #059669;
+  --kv-send-disabled: #134E4A;
+  --kv-send-soft: #065F46;
 
-  --kv-gear-bg: #ffffff;
-  --kv-gear-border: rgba(30, 47, 74, 0.14);
-  /* Chat bubbles (LIGHT) */
-  --kv-chat-user-bg: #ffffff;
-  /* 👈 ya no verde */
-  --kv-chat-user-border: rgba(30, 47, 74, 0.14);
-  /* borde neutro */
-  --kv-chat-bot-bg: #ffffff;
-  --kv-chat-bot-border: rgba(30, 47, 74, 0.14);
+  --kv-popover-bg: #064E3B;
+  --kv-popover-border: #065F46;
+  --kv-popover-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  --kv-gear-bg: #064E3B;
+  --kv-gear-border: #065F46;
+
+  --kv-chat-user-bg: #065F46;
+  --kv-chat-user-border: #10B981;
+  --kv-chat-bot-bg: #064E3B;
+  --kv-chat-bot-border: #065F46;
+  --kv-brand-main: #FFFFFF;
+  --kv-brand-accent: #10B981;
+  --kv-scrollbar-thumb: rgba(167, 243, 208, 0.22);
+  --kv-scrollbar-thumb-hover: rgba(167, 243, 208, 0.36);
 }
 
 body {

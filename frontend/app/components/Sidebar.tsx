@@ -118,10 +118,11 @@ export function Sidebar({
       >
         {menuOpen ? (
           <>
-            Observatorio <span style={{ color: "#57f2c7", fontWeight: 650 }}>AEC</span>
+            <span style={{ color: "var(--kv-brand-main)", fontWeight: 700 }}>AECCO</span>{" "}
+            <span style={{ color: "var(--kv-brand-accent)", fontWeight: 700 }}>IA</span>
           </>
         ) : (
-          "OA"
+          "AI"
         )}
       </button>
 
@@ -173,7 +174,9 @@ export function Sidebar({
       {/* Chats (centro, con scroll) */}
       {menuOpen && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0, marginTop: 6 }}>
-          <div style={{ fontSize: 12, color: "#57f2c7", letterSpacing: "0.4px" }}>Chats</div>
+          <div style={{ fontSize: 12, color: "var(--kv-brand-accent)", letterSpacing: "0.4px" }}>
+            Chats
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0 }}>
             {sorted.map((c) => {

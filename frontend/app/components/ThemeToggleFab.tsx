@@ -6,15 +6,14 @@ type Theme = "dark" | "light";
 
 function applyTheme(theme: Theme) {
     const html = document.documentElement;
-    if (theme === "light") html.classList.add("light");
-    else html.classList.remove("light");
+    if (theme === "dark") html.classList.add("dark");
+    else html.classList.remove("dark");
     localStorage.setItem("theme", theme);
 }
 
 function getTheme(): Theme {
-    const saved = localStorage.getItem("theme");
-    if (saved === "light" || saved === "dark") return saved;
-    return "dark";
+    localStorage.setItem("theme", "light");
+    return "light";
 }
 
 /* 🌞 Minimal Sun */
@@ -63,7 +62,7 @@ function MoonIcon({ size = 18 }: { size?: number }) {
 
 export function ThemeToggleFab() {
     const [theme, setThemeState] = useState<Theme>(() => {
-        if (typeof window === "undefined") return "dark";
+        if (typeof window === "undefined") return "light";
         return getTheme();
     });
 
