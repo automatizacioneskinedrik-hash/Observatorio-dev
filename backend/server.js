@@ -38,6 +38,14 @@ const CORS_ORIGINS = (
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+const PROFILE_CATEGORIES = [
+  "CEO",
+  "Dueño",
+  "Inversor",
+  "Líder Directivo",
+  "Coordinador",
+  "Técnico Profesional",
+];
 
 // Temporary in-memory stores for local email OTP flow.
 const otpStore = new Map();
@@ -132,6 +140,22 @@ function pickPasswordColumn(columns) {
   return null;
 }
 
+function normalizeCategory(value) {
+  const clean = String(value ?? "").trim().toLowerCase();
+  const byExact = PROFILE_CATEGORIES.find((c) => c.toLowerCase() === clean);
+  if (byExact) return byExact;
+
+  if (clean.includes("tecnico")) return "Técnico Profesional";
+  if (clean.includes("coordinador")) return "Coordinador";
+  if (clean.includes("lider")) return "Líder Directivo";
+  if (clean.includes("inversor")) return "Inversor";
+  if (clean.includes("dueno") || clean.includes("dueño") || clean.includes("propietario")) {
+    return "Dueño";
+  }
+  if (clean.includes("ceo")) return "CEO";
+  return null;
+}
+
 async function upsertUserByEmail({
   email,
   name,
@@ -139,6 +163,8 @@ async function upsertUserByEmail({
   googleId,
   passwordHash,
   profileConfirmed,
+  profileCategory,
+  profileAnalysis,
 }) {
   const columns = await getUserTableColumns();
   if (!columns.has("correo")) {
@@ -172,6 +198,14 @@ async function upsertUserByEmail({
     if (typeof profileConfirmed === "boolean" && columns.has("perfil_confirmado")) {
       updateParts.push("perfil_confirmado = @profileConfirmed");
       params.profileConfirmed = profileConfirmed;
+    }
+    if (typeof profileCategory === "string" && columns.has("tipo_caracterizacion")) {
+      updateParts.push("tipo_caracterizacion = @profileCategory");
+      params.profileCategory = profileCategory;
+    }
+    if (typeof profileAnalysis === "string" && columns.has("analisis_perfil")) {
+      updateParts.push("analisis_perfil = @profileAnalysis");
+      params.profileAnalysis = profileAnalysis;
     }
     if (passwordHash && pwdColumn) {
       updateParts.push(`${pwdColumn} = @passwordHash`);
@@ -215,6 +249,16 @@ async function upsertUserByEmail({
     insertColumns.push("perfil_confirmado");
     insertValues.push("@profileConfirmed");
     params.profileConfirmed = profileConfirmed;
+  }
+  if (typeof profileCategory === "string" && columns.has("tipo_caracterizacion")) {
+    insertColumns.push("tipo_caracterizacion");
+    insertValues.push("@profileCategory");
+    params.profileCategory = profileCategory;
+  }
+  if (typeof profileAnalysis === "string" && columns.has("analisis_perfil")) {
+    insertColumns.push("analisis_perfil");
+    insertValues.push("@profileAnalysis");
+    params.profileAnalysis = profileAnalysis;
   }
   if (passwordHash && pwdColumn) {
     insertColumns.push(pwdColumn);
@@ -373,7 +417,7 @@ app.post("/auth/register", async (req, res) => {
       name,
       provider: "local",
       passwordHash: password_hash,
-      profileConfirmed: true,
+      profileConfirmed: false,
     });
 
     if (upsert.exists) {
@@ -382,7 +426,11 @@ app.post("/auth/register", async (req, res) => {
 
     verifiedEmails.delete(email);
 
-    return res.status(201).json(user);
+    return res.status(201).json({
+      ...user,
+      isProfileComplete: false,
+      tipo_caracterizacion: null,
+    });
   } catch (err) {
     console.error("[auth/register] error:", err);
     return res.status(500).json({ error: "Error interno" });
@@ -392,30 +440,39 @@ app.post("/auth/register", async (req, res) => {
 // Google auth endpoint (token validation).
 app.post("/auth/google", async (req, res) => {
   try {
-    const { id_token } = req.body ?? {};
+    const { id_token, google_id, correo, nombre } = req.body ?? {};
+    let googleId = "";
+    let email = "";
+    let name = "";
 
-    if (typeof id_token !== "string" || !id_token.trim()) {
-      return res.status(400).json({ error: "id_token requerido" });
+    if (typeof id_token === "string" && id_token.trim()) {
+      if (!GOOGLE_CLIENT_ID) {
+        console.error("[auth/google] falta GOOGLE_CLIENT_ID en entorno");
+        return res.status(500).json({ error: "Falta GOOGLE_CLIENT_ID" });
+      }
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken: id_token,
+        audience: GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload?.sub || !payload?.email) {
+        return res.status(401).json({ error: "Token de Google invalido" });
+      }
+      googleId = payload.sub;
+      email = payload.email;
+      name = payload.name ?? "";
+    } else {
+      googleId = String(google_id ?? "").trim();
+      email = normalizeEmail(correo);
+      name = String(nombre ?? "").trim();
+
+      if (!googleId || !isValidEmail(email)) {
+        return res
+          .status(400)
+          .json({ error: "id_token requerido o payload google_id/correo invalido" });
+      }
     }
-
-    if (!GOOGLE_CLIENT_ID) {
-      console.error("[auth/google] falta GOOGLE_CLIENT_ID en entorno");
-      return res.status(500).json({ error: "Falta GOOGLE_CLIENT_ID" });
-    }
-
-    const ticket = await googleClient.verifyIdToken({
-      idToken: id_token,
-      audience: GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    if (!payload?.sub || !payload?.email) {
-      return res.status(401).json({ error: "Token de Google invalido" });
-    }
-
-    const googleId = payload.sub;
-    const email = payload.email;
-    const name = payload.name ?? "";
 
     console.log("[auth/google] Token verificado:", { email });
 
@@ -475,7 +532,7 @@ app.post("/auth/social", (req, res) => {
     name,
     provider: typeof provider === "string" ? provider : "social",
     googleId: provider === "google" ? googleId : undefined,
-    profileConfirmed: true,
+    profileConfirmed: false,
   })
     .then(() => {
       const authEvent = {
@@ -491,6 +548,94 @@ app.post("/auth/social", (req, res) => {
       console.error("[auth/social] error:", err);
       return res.status(500).json({ error: "Error de base de datos" });
     });
+});
+
+app.post("/api/configurar-onboarding", async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const respuestas = Array.isArray(req.body?.respuestas) ? req.body.respuestas : [];
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "Email invalido" });
+    }
+    if (respuestas.length !== 3 || respuestas.some((r) => String(r ?? "").trim().length < 15)) {
+      return res.status(400).json({
+        error: "Debes responder las 3 preguntas con suficiente detalle.",
+      });
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "Falta OPENAI_API_KEY" });
+    }
+
+    const prompt = `
+Eres un clasificador de perfil profesional para onboarding.
+Tu tarea: clasificar a la persona en una sola categoria de esta lista exacta:
+- CEO
+- Dueño
+- Inversor
+- Líder Directivo
+- Coordinador
+- Técnico Profesional
+
+Usa el contenido de sus respuestas para inferir su rol real segun:
+1) nivel de decision
+2) relacion con el negocio
+3) enfoque diario (estrategico/operativo/tecnico)
+
+Responde SOLO en JSON valido con esta forma exacta:
+{
+  "categoria": "una categoria exacta de la lista",
+  "analisis": "explicacion breve y personalizada en maximo 45 palabras"
+}
+
+No uses categorias fuera de la lista.
+`;
+
+    const content = `Pregunta 1:\n${String(respuestas[0]).trim()}\n\nPregunta 2:\n${String(
+      respuestas[1]
+    ).trim()}\n\nPregunta 3:\n${String(respuestas[2]).trim()}`;
+
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const r = await client.chat.completions.create({
+      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: prompt.trim() },
+        { role: "user", content },
+      ],
+    });
+
+    const raw = r.choices?.[0]?.message?.content ?? "{}";
+    let parsed = {};
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = {};
+    }
+
+    const categoria = normalizeCategory(parsed?.categoria) ?? "Coordinador";
+    const analisis =
+      typeof parsed?.analisis === "string" && parsed.analisis.trim()
+        ? parsed.analisis.trim().slice(0, 320)
+        : "Tu perfil refleja como decides, te vinculas al negocio y priorizas tu trabajo semanal.";
+
+    await upsertUserByEmail({
+      email,
+      provider: "social",
+      profileConfirmed: true,
+      profileCategory: categoria,
+      profileAnalysis: analisis,
+    });
+
+    return res.status(200).json({
+      categoria,
+      analisis,
+      isProfileComplete: true,
+    });
+  } catch (err) {
+    console.error("[api/configurar-onboarding] error:", err);
+    return res.status(500).json({ error: "Error interno analizando onboarding" });
+  }
 });
 
 app.post("/chat", async (req, res) => {
