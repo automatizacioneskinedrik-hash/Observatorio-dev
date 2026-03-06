@@ -211,7 +211,7 @@ async function upsertUserByEmail({
       updateParts.push(`${pwdColumn} = @passwordHash`);
       params.passwordHash = passwordHash;
     }
-
+    
     if (updateParts.length > 0) {
       await bigquery.query({
         query: `UPDATE ${BQ_TABLE_REF} SET ${updateParts.join(", ")} WHERE correo = @email`,
@@ -297,7 +297,7 @@ async function sendOtpEmail(toEmail, code) {
   });
 }
 
-// FASE 1 - Solicitud de codigo OTP
+// FASE 1 - Solicitud de codigo OTP 
 app.post("/auth/request-code", async (req, res) => {
   try {
     cleanupAuthStores();
@@ -327,7 +327,7 @@ app.post("/auth/request-code", async (req, res) => {
   }
 });
 
-// FASE 2 - Verificacion de codigo OTP
+// FASE 2 - Verificacion de codigo OTP 
 app.post("/auth/verify-code", async (req, res) => {
   try {
     cleanupAuthStores();
@@ -564,8 +564,14 @@ app.post("/api/configurar-onboarding", async (req, res) => {
       });
     }
     if (!process.env.OPENAI_API_KEY) {
+      console.error("[api/configurar-onboarding] falta OPENAI_API_KEY");
       return res.status(500).json({ error: "Falta OPENAI_API_KEY" });
     }
+
+    console.log("[api/configurar-onboarding] iniciando analisis de IA", {
+      email,
+      respuestas: respuestas.map((r) => String(r ?? "").trim().slice(0, 120)),
+    });
 
     const prompt = `
 Eres un clasificador de perfil profesional para onboarding.
@@ -595,6 +601,11 @@ No uses categorias fuera de la lista.
       respuestas[1]
     ).trim()}\n\nPregunta 3:\n${String(respuestas[2]).trim()}`;
 
+    console.log("[api/configurar-onboarding] prompt -> OpenAI", {
+      prompt: prompt.trim(),
+      respuestas: content,
+    });
+
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const r = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
@@ -613,6 +624,10 @@ No uses categorias fuera de la lista.
       parsed = {};
     }
 
+    console.log("[api/configurar-onboarding] respuesta cruda de OpenAI", {
+      raw: String(raw).slice(0, 1200),
+    });
+
     const categoria = normalizeCategory(parsed?.categoria) ?? "Coordinador";
     const analisis =
       typeof parsed?.analisis === "string" && parsed.analisis.trim()
@@ -625,6 +640,12 @@ No uses categorias fuera de la lista.
       profileConfirmed: true,
       profileCategory: categoria,
       profileAnalysis: analisis,
+    });
+
+    console.log("[api/configurar-onboarding] registro procesado", {
+      email,
+      categoria,
+      analisis: analisis.slice(0, 240),
     });
 
     return res.status(200).json({
@@ -662,7 +683,7 @@ app.post("/chat", async (req, res) => {
         { role: "user", content: message.trim() },
       ],
     });
-
+  
     return res.json({ reply: r.choices[0].message.content });
   } catch (err) {
     console.error("OpenAI error:", err);
