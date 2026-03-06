@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Chat from "./components/Chat";
 import { InfoModal } from "./components/InfoModal";
@@ -24,7 +24,10 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(true);
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
-  const { logout } = useSocialAuth((nextUser) => setUser(nextUser));
+  const handleAuthSuccess = useCallback((nextUser: User) => {
+    setUser(nextUser);
+  }, []);
+  const { logout, authLoading } = useSocialAuth(handleAuthSuccess);
   const sidebarMenu = MENU.filter(
     (item): item is { id: Mode; label: string; icon: ReactNode } =>
       item.id === "observatorio" || item.id === "personas" || item.id === "invitaciones"
@@ -72,27 +75,24 @@ export default function Home() {
         ? "Personas"
         : "Invitaciones";
 
-  if (!user) {
-    return <AuthGate onAuthenticated={setUser} />;
-  }
-
-  if (user.isProfileComplete !== true) {
+  if (authLoading && !user) {
     return (
       <div
         style={{
           minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--kv-text)",
-          fontFamily: "var(--font-neue-montreal), system-ui",
           backgroundColor: "var(--kv-bg)",
           backgroundImage: "var(--kv-glow)",
         }}
-      >
-        Redirigiendo al perfilamiento...
-      </div>
+      />
     );
+  }
+
+  if (!user) {
+    return <AuthGate onAuthenticated={handleAuthSuccess} />;
+  }
+
+  if (user.isProfileComplete !== true) {
+    return null;
   }
 
   return (
@@ -187,7 +187,10 @@ export default function Home() {
         <InfoModal
           title="Cuenta"
           onClose={() => setAuthOpen(false)}
-          onAccept={logout} 
+          onAccept={() => {
+            setAuthOpen(false);
+            void logout();
+          }}
           acceptText="Cerrar sesión"
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

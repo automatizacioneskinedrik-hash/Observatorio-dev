@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   signInWithPopup,
   onAuthStateChanged,
@@ -16,6 +16,11 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
+  const onSuccessRef = useRef(onSuccess);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
 
   const persistProfileState = useCallback((nextUser: User) => {
     if (typeof window === "undefined") return;
@@ -101,10 +106,10 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
       };
 
       persistProfileState(userData);
-      onSuccess(userData);
+      onSuccessRef.current(userData);
       return userData;
     },
-    [onSuccess, persistProfileState, resolveProfileFromBackend]
+    [persistProfileState, resolveProfileFromBackend]
   );
 
   useEffect(() => {
@@ -114,6 +119,23 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
       if (!currentUser) {
         setAuthLoading(false);
         return;
+      }
+
+      if (currentUser.email) {
+        const localProfile = readLocalProfileState(currentUser.email);
+        const localUserData: User = {
+          name: currentUser.displayName || "Usuario",
+          email: currentUser.email,
+          subscription: "Free",
+          isProfileComplete: localProfile.isProfileComplete,
+          profileCategory: localProfile.profileCategory,
+        };
+        onSuccessRef.current(localUserData);
+        if (localProfile.isProfileComplete === true) {
+          setAuthLoading(false);
+          void notifyAuthenticated(currentUser);
+          return;
+        }
       }
 
       void (async () => {
@@ -126,7 +148,7 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
     });
 
     return () => unsubscribe();
-  }, [notifyAuthenticated]);
+  }, [notifyAuthenticated, readLocalProfileState]);
 
   const signInWithGoogle = useCallback(async () => {
     setAuthLoading(true);
@@ -165,9 +187,11 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
         localStorage.removeItem("kv_profile_complete");
         localStorage.removeItem("kv_profile_category");
         localStorage.removeItem("kv_local_user");
+        localStorage.removeItem("kv_google_id");
+        localStorage.removeItem("kv_onboarding_pending");
         sessionStorage.removeItem("kv_auth_session");
       }
-      window.location.reload();
+      window.location.assign("/");
     } catch {
       setAuthError("No se pudo cerrar sesion correctamente");
     }
