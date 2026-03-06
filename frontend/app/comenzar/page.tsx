@@ -73,7 +73,12 @@ export default function ComenzarPage() {
         }
       }
 
+<<<<<<< HEAD
       const firebaseSessionOk = currentUser?.email === email;
+=======
+      
+      const firebaseSessionOk = Boolean(currentUser?.email) && currentUser?.email === email;
+>>>>>>> 9cf2f2a (fix: correccion de currentUser null en page.tsx)
       const ok = email.trim().length > 0 && hasLocalSession && activeSession && firebaseSessionOk;
 
       setHasSession(ok && !profileComplete);
