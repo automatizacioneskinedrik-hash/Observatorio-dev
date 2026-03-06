@@ -28,10 +28,9 @@ export default function Home() {
     setUser(nextUser);
   }, []);
   const { logout, authLoading } = useSocialAuth(handleAuthSuccess);
-  const sidebarMenu = MENU.filter(
-    (item): item is { id: Mode; label: string; icon: ReactNode } =>
-      item.id === "observatorio" || item.id === "personas" || item.id === "invitaciones"
-  );
+  const sidebarMenu = MENU.filter((item) =>
+  ["observatorio", "personas", "invitaciones"].includes(item.id as Mode)
+);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
@@ -111,7 +110,7 @@ export default function Home() {
         user={user}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
-        menu={sidebarMenu}
+        menu={sidebarMenu as any}
         activeId={activeMode}
         onSelect={onPickMode}
         conversations={conversations}
