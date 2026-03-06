@@ -73,7 +73,7 @@ export default function ComenzarPage() {
         }
       }
 
-      const firebaseSessionOk = Boolean(currentUser?.email) && currentUser.email === email;
+      const firebaseSessionOk = currentUser?.email === email;
       const ok = email.trim().length > 0 && hasLocalSession && activeSession && firebaseSessionOk;
 
       setHasSession(ok && !profileComplete);
