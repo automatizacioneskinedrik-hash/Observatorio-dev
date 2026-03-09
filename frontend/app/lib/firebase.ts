@@ -2,7 +2,6 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Configuración usando las variables de tu .env.local
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -12,12 +11,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Inicializar Firebase (evita inicializar dos veces en Next.js)
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+let app: any = null;
+let auth: any = null;
+let db: any = null;
 
-// Exportar servicios para usar en tus hooks
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const googleProvider = new GoogleAuthProvider();
+if (typeof window !== "undefined") {
+  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+}
 
-export default app;
+export { app, auth, db };
+
+export const googleProvider =
+  typeof window !== "undefined" ? new GoogleAuthProvider() : null;
