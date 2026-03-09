@@ -52,40 +52,58 @@ export default function ComenzarPage() {
   }, [router]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      const email =
-        typeof window !== "undefined" ? localStorage.getItem("kv_user_email") ?? "" : "";
-      const profileComplete =
-        typeof window !== "undefined" && localStorage.getItem("kv_profile_complete") === "true";
-      const activeSession =
-        typeof window !== "undefined" && sessionStorage.getItem("kv_auth_session") === "active";
+  if (!auth) {
+    setSessionChecked(true);
+    goHome();
+    return;
+  }
 
-      let hasLocalSession = false;
-      if (typeof window !== "undefined") {
-        const rawLocalUser = localStorage.getItem("kv_local_user");
-        if (rawLocalUser) {
-          try {
-            const parsed = JSON.parse(rawLocalUser) as { email?: string };
-            hasLocalSession = Boolean(parsed?.email) && parsed.email === email;
-          } catch {
-            localStorage.removeItem("kv_local_user");
-          }
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const email =
+      typeof window !== "undefined"
+        ? localStorage.getItem("kv_user_email") ?? ""
+        : "";
+
+    const profileComplete =
+      typeof window !== "undefined" &&
+      localStorage.getItem("kv_profile_complete") === "true";
+
+    const activeSession =
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("kv_auth_session") === "active";
+
+    let hasLocalSession = false;
+
+    if (typeof window !== "undefined") {
+      const rawLocalUser = localStorage.getItem("kv_local_user");
+
+      if (rawLocalUser) {
+        try {
+          const parsed = JSON.parse(rawLocalUser) as { email?: string };
+          hasLocalSession = Boolean(parsed?.email) && parsed.email === email;
+        } catch {
+          localStorage.removeItem("kv_local_user");
         }
       }
+    }
 
+    const firebaseSessionOk =
+      Boolean(currentUser?.email) && currentUser?.email === email;
 
-      const firebaseSessionOk = Boolean(currentUser?.email) && currentUser?.email === email;
-      
-      const ok = email.trim().length > 0 && hasLocalSession && activeSession && firebaseSessionOk;
+    const ok =
+      email.trim().length > 0 &&
+      hasLocalSession &&
+      activeSession &&
+      firebaseSessionOk;
 
-      setHasSession(ok && !profileComplete);
-      setSessionChecked(true);
+    setHasSession(ok && !profileComplete);
+    setSessionChecked(true);
 
-      if (!ok || profileComplete) goHome();
-    });
+    if (!ok || profileComplete) goHome();
+  });
 
-    return () => unsubscribe();
-  }, [goHome]);
+  return () => unsubscribe();
+}, [goHome]);
 
   const actualizarRespuesta = (value: string) => {
     setRespuestas((prev) => {
