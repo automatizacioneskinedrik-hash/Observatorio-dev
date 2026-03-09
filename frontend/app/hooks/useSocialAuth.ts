@@ -151,33 +151,40 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
   }, [notifyAuthenticated, readLocalProfileState]);
 
   const signInWithGoogle = useCallback(async () => {
-    setAuthLoading(true);
-    setAuthError(null);
+  setAuthLoading(true);
+  setAuthError(null);
 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const fbUser = result.user;
-
-      const userRef = doc(db, "usuarios", fbUser.uid);
-      await setDoc(
-        userRef,
-        {
-          name: fbUser.displayName || "Usuario Google",
-          email: fbUser.email || "",
-          subscription: "Free",
-          lastLogin: new Date().toISOString(),
-          photoURL: fbUser.photoURL,
-        },
-        { merge: true }
-      );
-
-      await notifyAuthenticated(fbUser);
-    } catch {
-      setAuthError("No se pudo iniciar sesion con Google");
-    } finally {
-      setAuthLoading(false);
+  try {
+    if (!auth || !googleProvider) {
+      throw new Error("Firebase Auth no está disponible");
     }
-  }, [notifyAuthenticated]);
+
+    const result = await signInWithPopup(auth, googleProvider);
+    const fbUser = result.user;
+
+    const userRef = doc(db, "usuarios", fbUser.uid);
+
+    await setDoc(
+      userRef,
+      {
+        name: fbUser.displayName || "Usuario Google",
+        email: fbUser.email || "",
+        subscription: "Free",
+        lastLogin: new Date().toISOString(),
+        photoURL: fbUser.photoURL,
+      },
+      { merge: true }
+    );
+
+    await notifyAuthenticated(fbUser);
+
+  } catch {
+    setAuthError("No se pudo iniciar sesion con Google");
+  } finally {
+    setAuthLoading(false);
+  }
+
+}, [notifyAuthenticated]);
 
   const logout = async () => {
     try {
