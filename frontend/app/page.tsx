@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import Chat from "./components/Chat";
 import { InfoModal } from "./components/InfoModal";
 import { Sidebar } from "./components/Sidebar";
@@ -12,15 +13,24 @@ import { ObservatorioPanel } from "./components/panels/ObservatorioPanel";
 import { PersonasPanel } from "./components/panels/PersonasPanel";
 import { useChatConversations } from "./hooks/useChatConversations";
 import type { User } from "./types/user";
+import { useSocialAuth } from "./hooks/useSocialAuth";
 
 type Mode = "observatorio" | "personas" | "invitaciones";
 
 export default function Home() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(true);
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
+  const handleAuthSuccess = useCallback((nextUser: User) => {
+    setUser(nextUser);
+  }, []);
+  const { logout, authLoading } = useSocialAuth(handleAuthSuccess);
+  const sidebarMenu = MENU.filter((item) =>
+  ["observatorio", "personas", "invitaciones"].includes(item.id as Mode)
+);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
@@ -42,6 +52,12 @@ export default function Home() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  useEffect(() => {
+    if (!user) return;
+    if (user.isProfileComplete === true) return;
+    router.replace("/comenzar");
+  }, [router, user]);
+
   const onPickMode = (id: Mode) => {
     if (activeMode === id) {
       setActiveMode(null);
@@ -58,18 +74,24 @@ export default function Home() {
         ? "Personas"
         : "Invitaciones";
 
-  const primaryStyle: CSSProperties = {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid var(--kv-accent-border)",
-    background: "var(--kv-accent-bg)",
-    color: "var(--kv-text)",
-    cursor: "pointer",
-    fontWeight: 650,
-  };
+  if (authLoading && !user) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "var(--kv-bg)",
+          backgroundImage: "var(--kv-glow)",
+        }}
+      />
+    );
+  }
 
   if (!user) {
-    return <AuthGate onAuthenticated={setUser} />;
+    return <AuthGate onAuthenticated={handleAuthSuccess} />;
+  }
+
+  if (user.isProfileComplete !== true) {
+    return null;
   }
 
   return (
@@ -88,7 +110,7 @@ export default function Home() {
         user={user}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
-        menu={MENU}
+        menu={sidebarMenu as any}
         activeId={activeMode}
         onSelect={onPickMode}
         conversations={conversations}
@@ -160,27 +182,21 @@ export default function Home() {
         </InfoModal>
       )}
 
-      {authOpen && (
+      {authOpen && user && (
         <InfoModal
           title="Cuenta"
           onClose={() => setAuthOpen(false)}
-          onAccept={() => setAuthOpen(false)}
-          acceptText="Cerrar"
+          onAccept={() => {
+            setAuthOpen(false);
+            void logout();
+          }}
+          acceptText="Cerrar sesión"
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontWeight: 650 }}>{user.name}</div>
             <div style={{ opacity: 0.8 }}>{user.email}</div>
             <div style={{ opacity: 0.7 }}>{user.subscription}</div>
-
-            <button
-              style={primaryStyle}
-              onClick={() => {
-                setUser(null);
-                setAuthOpen(false);
-              }}
-            >
-              Cerrar sesión
-            </button>
+            {/* El botón de logout ahora es el botón principal del modal */}
           </div>
         </InfoModal>
       )}

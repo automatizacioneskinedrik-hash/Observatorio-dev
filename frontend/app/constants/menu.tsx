@@ -1,8 +1,10 @@
-import { IconTelescope, IconPeople, IconInvite } from "../components/icons";
+import { IconTelescope, IconPeople, IconInvite, IconSearch } from "../components/icons";
 
 export const MENU = [
-  { id: "observatorio", label: "Observatorio", icon: <IconTelescope /> },
-  { id: "personas", label: "Personas", icon: <IconPeople /> },
-  { id: "invitaciones", label: "Invitaciones", icon: <IconInvite /> },
+  { 
+    id: "search", 
+    label: "Buscar chats", 
+    icon: <IconSearch />, // Aquí usamos el icono de la lupa
+  },
 ] as const;
 

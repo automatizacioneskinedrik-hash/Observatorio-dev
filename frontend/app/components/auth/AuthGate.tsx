@@ -170,11 +170,29 @@ export function AuthGate({ onAuthenticated }: Props) {
         throw new Error(data?.error ?? "No se pudo completar el registro");
       }
 
-      onAuthenticated({
+      const nextUser: User = {
         name: data?.name ?? name.trim(),
         email: data?.email ?? email.trim(),
         subscription: "Free",
-      });
+        isProfileComplete: data?.isProfileComplete === true,
+        profileCategory:
+          typeof data?.tipo_caracterizacion === "string"
+            ? data.tipo_caracterizacion
+            : null,
+      };
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("kv_user_email", nextUser.email);
+        localStorage.setItem(
+          "kv_profile_complete",
+          nextUser.isProfileComplete === true ? "true" : "false"
+        );
+        localStorage.setItem("kv_profile_category", nextUser.profileCategory ?? "");
+        localStorage.setItem("kv_local_user", JSON.stringify(nextUser));
+        sessionStorage.setItem("kv_auth_session", "active");
+      }
+
+      onAuthenticated(nextUser);
     } catch (error) {
       setEmailFlowError(
         error instanceof Error ? error.message : "Error creando cuenta"
