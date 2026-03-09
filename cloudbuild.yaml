@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # 🚨 ARCHIVO DE INFRAESTRUCTURA AUDITADO - OBSERVATORIO AECCO LAB 🚨
 # ==============================================================================
 # REGLAS DE ORO: 
@@ -86,6 +86,7 @@ substitutions:
   _AR_REPO: europe-southwest1-docker.pkg.dev/${PROJECT_ID}/repo-observatorio-dev
   _BACKEND_IMAGE: ${_AR_REPO}/backend
   _FRONTEND_IMAGE: ${_AR_REPO}/frontend
+  _FRONTEND_SERVICE: frontend-dev
 
 images:
   - ${_BACKEND_IMAGE}:${SHORT_SHA}
