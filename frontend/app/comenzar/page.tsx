@@ -69,12 +69,31 @@ const readStoredSessionState = (): StoredSessionState => {
 
 export default function ComenzarPage() {
   const router = useRouter();
+  const initialSessionInfo = useMemo(() => {
+    if (typeof window === "undefined") {
+      return {
+        ready: false,
+        profileComplete: false,
+      };
+    }
+
+    const stored = readStoredSessionState();
+    const email = stored.email.trim();
+    return {
+      ready:
+        email.length > 0 &&
+        stored.hasLocalSession &&
+        stored.activeSession &&
+        !stored.profileComplete,
+      profileComplete: stored.profileComplete,
+    };
+  }, []);
   const [paso, setPaso] = useState(0);
   const [respuestas, setRespuestas] = useState<string[]>(["", "", ""]);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(initialSessionInfo.ready);
+  const [hasSession, setHasSession] = useState(initialSessionInfo.ready);
   const [focusTextarea, setFocusTextarea] = useState(false);
 
   const respuestaActual = respuestas[paso] ?? "";
@@ -95,18 +114,18 @@ export default function ComenzarPage() {
       return;
     }
 
+    if (initialSessionInfo.profileComplete) {
+      setSessionChecked(true);
+      goHome();
+      return;
+    }
+
     const storedSession = readStoredSessionState();
     const trimmedEmail = storedSession.email.trim();
     const localOk =
       trimmedEmail.length > 0 &&
       storedSession.hasLocalSession &&
       storedSession.activeSession;
-
-    if (storedSession.profileComplete) {
-      setSessionChecked(true);
-      goHome();
-      return;
-    }
 
     if (localOk) {
       setHasSession(true);
@@ -132,7 +151,7 @@ export default function ComenzarPage() {
     });
 
     return () => unsubscribe();
-  }, [auth, goHome]);
+  }, [auth, goHome, initialSessionInfo.profileComplete]);
 
   const actualizarRespuesta = (value: string) => {
     setRespuestas((prev) => {
