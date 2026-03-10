@@ -31,6 +31,42 @@ const preguntas = [
 
 const MIN_CHARS = 15;
 
+type StoredSessionState = {
+  email: string;
+  profileComplete: boolean;
+  activeSession: boolean;
+  hasLocalSession: boolean;
+};
+
+const readStoredSessionState = (): StoredSessionState => {
+  if (typeof window === "undefined") {
+    return {
+      email: "",
+      profileComplete: false,
+      activeSession: false,
+      hasLocalSession: false,
+    };
+  }
+
+  const email = localStorage.getItem("kv_user_email") ?? "";
+  const profileComplete = localStorage.getItem("kv_profile_complete") === "true";
+  const activeSession = sessionStorage.getItem("kv_auth_session") === "active";
+
+  let hasLocalSession = false;
+  const rawLocalUser = localStorage.getItem("kv_local_user");
+
+  if (rawLocalUser) {
+    try {
+      const parsed = JSON.parse(rawLocalUser) as { email?: string };
+      hasLocalSession = Boolean(parsed?.email) && parsed.email === email;
+    } catch {
+      localStorage.removeItem("kv_local_user");
+    }
+  }
+
+  return { email, profileComplete, activeSession, hasLocalSession };
+};
+
 export default function ComenzarPage() {
   const router = useRouter();
   const [paso, setPaso] = useState(0);
@@ -52,58 +88,51 @@ export default function ComenzarPage() {
   }, [router]);
 
   useEffect(() => {
-  if (!auth) {
-    setSessionChecked(true);
-    goHome();
-    return;
-  }
-
-  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-    const email =
-      typeof window !== "undefined"
-        ? localStorage.getItem("kv_user_email") ?? ""
-        : "";
-
-    const profileComplete =
-      typeof window !== "undefined" &&
-      localStorage.getItem("kv_profile_complete") === "true";
-
-    const activeSession =
-      typeof window !== "undefined" &&
-      sessionStorage.getItem("kv_auth_session") === "active";
-
-    let hasLocalSession = false;
-
-    if (typeof window !== "undefined") {
-      const rawLocalUser = localStorage.getItem("kv_local_user");
-
-      if (rawLocalUser) {
-        try {
-          const parsed = JSON.parse(rawLocalUser) as { email?: string };
-          hasLocalSession = Boolean(parsed?.email) && parsed.email === email;
-        } catch {
-          localStorage.removeItem("kv_local_user");
-        }
-      }
+    if (typeof window === "undefined") return;
+    if (!auth) {
+      setSessionChecked(true);
+      goHome();
+      return;
     }
 
-    const firebaseSessionOk =
-      Boolean(currentUser?.email) && currentUser?.email === email;
+    const storedSession = readStoredSessionState();
+    const trimmedEmail = storedSession.email.trim();
+    const localOk =
+      trimmedEmail.length > 0 &&
+      storedSession.hasLocalSession &&
+      storedSession.activeSession;
 
-    const ok =
-      email.trim().length > 0 &&
-      hasLocalSession &&
-      activeSession &&
-      firebaseSessionOk;
+    if (storedSession.profileComplete) {
+      setSessionChecked(true);
+      goHome();
+      return;
+    }
 
-    setHasSession(ok && !profileComplete);
-    setSessionChecked(true);
+    if (localOk) {
+      setHasSession(true);
+      setSessionChecked(true);
+    }
 
-    if (!ok || profileComplete) goHome();
-  });
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      const freshSession = readStoredSessionState();
+      const email = freshSession.email.trim();
+      const firebaseSessionOk =
+        Boolean(currentUser?.email) && currentUser?.email === email;
+      const ok =
+        email.length > 0 &&
+        freshSession.hasLocalSession &&
+        freshSession.activeSession &&
+        firebaseSessionOk;
 
-  return () => unsubscribe();
-}, [goHome]);
+      const shouldShowOnboarding = ok && !freshSession.profileComplete;
+      setHasSession(shouldShowOnboarding);
+      setSessionChecked(true);
+
+      if (!ok || freshSession.profileComplete) goHome();
+    });
+
+    return () => unsubscribe();
+  }, [auth, goHome]);
 
   const actualizarRespuesta = (value: string) => {
     setRespuestas((prev) => {
