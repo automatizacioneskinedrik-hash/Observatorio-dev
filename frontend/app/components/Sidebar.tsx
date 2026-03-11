@@ -118,7 +118,7 @@ export function Sidebar({
       >
         {menuOpen ? (
           <>
-            <span style={{ color: "var(--kv-brand-main)", fontWeight: 700 }}>AECCO</span>{" "}
+            <span style={{ color: "var(--kv-brand-main)", fontWeight: 700 }}>AECO</span>{" "}
             <span style={{ color: "var(--kv-brand-accent)", fontWeight: 700 }}>IA</span>
           </>
         ) : (

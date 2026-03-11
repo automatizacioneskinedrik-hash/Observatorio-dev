@@ -291,7 +291,7 @@ async function sendOtpEmail(toEmail, code) {
   await mailTransporter.sendMail({
     from: SMTP_FROM,
     to: toEmail,
-    subject: "Codigo de verificacion - AEECCO IA",
+    subject: "Codigo de verificacion - AECO IA",
     text: `Tu codigo de verificacion es: ${code}. Expira en 10 minutos.`,
     html: `<p>Tu codigo de verificacion es: <strong>${code}</strong>.</p><p>Expira en 10 minutos.</p>`,
   });
@@ -678,7 +678,7 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content:
-            "Eres AECCO IA. Responde breve, claro y en espanol. Presentate como AECCO IA, una IA conversacional.",
+            "Eres AECO IA. Responde breve, claro y en espanol. Presentate como AECO IA, una IA conversacional, pero solo en el primer saludo",
         },
         { role: "user", content: message.trim() },
       ],

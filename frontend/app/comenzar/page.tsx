@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import BotonAcceso from "../components/Onboarding/BotonAcceso";
 
 const preguntas = [
   {
@@ -143,11 +144,23 @@ export default function ComenzarPage() {
         freshSession.activeSession &&
         firebaseSessionOk;
 
-      const shouldShowOnboarding = ok && !freshSession.profileComplete;
-      setHasSession(shouldShowOnboarding);
       setSessionChecked(true);
 
-      if (!ok || freshSession.profileComplete) goHome();
+      if (!currentUser) {
+        if (localOk && !freshSession.profileComplete) {
+          setHasSession(true);
+          return;
+        }
+
+        setHasSession(false);
+        goHome();
+        return;
+      }
+
+      const shouldShowOnboarding = ok && !freshSession.profileComplete;
+      setHasSession(shouldShowOnboarding);
+
+      if (!shouldShowOnboarding) goHome();
     });
 
     return () => unsubscribe();

@@ -28,7 +28,7 @@ export function MessageBubble({ m }: { m: ChatMessage }) {
         }}
       >
         <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 6 }}>
-          {m.role === "user" ? "Tú" : "AECCO IA"}
+          {m.role === "user" ? "Tú" : "AECO IA"}
         </div>
         <div style={{ opacity: 0.95 }}>
           {m.text === "__typing__" ? <TypingDots /> : m.text}

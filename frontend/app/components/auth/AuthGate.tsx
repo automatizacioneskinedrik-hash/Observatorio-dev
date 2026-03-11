@@ -233,7 +233,7 @@ export function AuthGate({ onAuthenticated }: Props) {
           Registrate o inicia sesion
         </div>
         <div style={{ fontSize: 16, textAlign: "center", opacity: 0.8 }}>
-          Incia sesion y tendras acceso completo a AEECCO IA
+          Incia sesion y tendras acceso completo a AECO IA
         </div>
 
         <button

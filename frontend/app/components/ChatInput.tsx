@@ -31,7 +31,7 @@ export function ChatInput({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && canSend && send()}
-        placeholder={loading ? "AECCO IA está respondiendo..." : "¿Qué quieres observar el día de hoy?"}
+        placeholder={loading ? "AECO IA está respondiendo..." : "¿Qué quieres observar el día de hoy?"}
         style={{
           flex: 1,
           border: "none",

@@ -123,15 +123,16 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
 
       if (currentUser.email) {
         const localProfile = readLocalProfileState(currentUser.email);
-        const localUserData: User = {
-          name: currentUser.displayName || "Usuario",
-          email: currentUser.email,
-          subscription: "Free",
-          isProfileComplete: localProfile.isProfileComplete,
-          profileCategory: localProfile.profileCategory,
-        };
-        onSuccessRef.current(localUserData);
+
         if (localProfile.isProfileComplete === true) {
+          const localUserData: User = {
+            name: currentUser.displayName || "Usuario",
+            email: currentUser.email,
+            subscription: "Free",
+            isProfileComplete: true,
+            profileCategory: localProfile.profileCategory,
+          };
+          onSuccessRef.current(localUserData);
           setAuthLoading(false);
           void notifyAuthenticated(currentUser);
           return;

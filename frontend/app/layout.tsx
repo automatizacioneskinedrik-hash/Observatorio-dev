@@ -3,8 +3,8 @@ import "./globals.css";
 import { neueMontreal } from "./fonts";
 
 export const metadata: Metadata = {
-  title: "AECCO IA",
-  description: "AECCO IA conversacional",
+  title: "AECO IA",
+  description: "AECO IA conversacional",
 };
 
 export default function RootLayout({
