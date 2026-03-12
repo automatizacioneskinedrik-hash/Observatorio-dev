@@ -10,12 +10,22 @@ export default function BotonAcceso({ perfilDetectado }: Props) {
   const router = useRouter();
 
   const manejarIngreso = () => {
-    const esEstrategico = ['CEO', 'Dueño', 'Inversor'].includes(perfilDetectado);
+    
+    const perfilesEstrategicos = ['CEO', 'Dueño', 'Inversor'];
 
-    if (esEstrategico) {
-      router.push('/dashboard-estrategico');
+    const perfilesEvaluacion = ['Líder Directivo', 'Coordinador', 'Técnico Profesional'];
+
+    console.log("Perfil procesado:", perfilDetectado);
+
+    if (perfilesEstrategicos.includes(perfilDetectado)) {
+    
+      router.push('/');
+    } else if (perfilesEvaluacion.includes(perfilDetectado)) {
+      
+      router.push('/evaluacion');
     } else {
-      router.push('/entrevista-liderazgo');
+      
+      router.push('/');
     }
   };
 
