@@ -19,23 +19,8 @@ const AudioBars = () => (
 export default function EvaluacionPage() {
   return (
     <div className="min-h-screen bg-slate-50 relative">
-      {/* Botón de retorno flotante - Ajustado para diseño claro */}
-      <div className="absolute top-6 left-6 z-50">
-        <Link 
-          href="/" 
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors group"
-        >
-          <div className="p-2 rounded-full border border-slate-200 bg-white shadow-sm group-hover:border-slate-300">
-            <ArrowLeft size={18} />
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest">
-            Volver al Chat
-          </span>
-        </Link>
-      </div>
-
-      <header className="flex w-full items-center justify-between gap-3 border-b border-slate-100 bg-white px-6 py-4 shadow-sm shadow-slate-900/5">
-        <div className="flex items-center gap-3 ml-32"> {/* Margen para no tapar con el botón de volver */}
+      <header className="flex w-full items-center justify-between gap-6 border-b border-slate-100 bg-white px-6 py-4 shadow-sm shadow-slate-900/5">
+        <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center rounded-3xl bg-slate-900 text-white shadow-lg">
             <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 21V9l9-6 9 6v12" />
@@ -57,7 +42,20 @@ export default function EvaluacionPage() {
         </div>
       </header>
 
-      <div className="mx-auto mt-6 flex w-full max-w-[1140px] flex-col gap-5 px-3 py-5">
+      <div className="mt-4 flex w-full max-w-[1140px] px-3">
+        <Link
+          href="/"
+          className="group inline-flex w-fit items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 shadow-sm transition-colors hover:border-slate-300 hover:text-slate-900"
+        >
+          <div className="p-2 rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors group-hover:border-slate-300 group-hover:text-slate-900">
+            <ArrowLeft size={16} />
+          </div>
+          <span>Volver al Chat</span>
+        </Link>
+      </div>
+      
+      <div className="mx-auto flex w-full max-w-[1140px] flex-col gap-5 px-3 py-5">
+        
         <main className="space-y-6">
           <section className="text-center">
             <p className="text-[12px] font-semibold uppercase tracking-[0.5em] text-emerald-700">Entrevista de Liderazgo</p>
@@ -92,9 +90,10 @@ export default function EvaluacionPage() {
               <span>Entrada de audio</span>
               <span>00:00 / 02:00 máx.</span>
             </div>
-            <div className="h-16 flex items-center justify-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
-               {/* Aquí iría el componente <AudioBars /> que ya tienes */}
-               <p className="text-slate-300 text-[10px] uppercase tracking-widest italic">Ondas de audio activas</p>
+            <div className="flex w-full flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-4">
+              <div className="w-full max-w-[280px]">
+                <AudioBars />
+              </div>
             </div>
             <div className="flex justify-center pt-2">
               <button type="button" className="flex items-center justify-center gap-3 rounded-2xl bg-slate-900 px-8 py-4 text-[12px] font-bold uppercase tracking-[0.2em] text-white shadow-lg hover:bg-emerald-900 transition-all">
