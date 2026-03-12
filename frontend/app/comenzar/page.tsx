@@ -52,6 +52,7 @@ const readStoredSessionState = (): StoredSessionState => {
   const email = localStorage.getItem("kv_user_email") ?? "";
   const profileComplete = localStorage.getItem("kv_profile_complete") === "true";
   const activeSession = sessionStorage.getItem("kv_auth_session") === "active";
+  
 
   let hasLocalSession = false;
   const rawLocalUser = localStorage.getItem("kv_local_user");
@@ -70,6 +71,8 @@ const readStoredSessionState = (): StoredSessionState => {
 
 export default function ComenzarPage() {
   const router = useRouter();
+  const [mostrarBotonFinal, setMostrarBotonFinal] = useState(false);
+const [categoriaDetectada, setCategoriaDetectada] = useState("");
   const initialSessionInfo = useMemo(() => {
     if (typeof window === "undefined") {
       return {
@@ -195,8 +198,9 @@ export default function ComenzarPage() {
         }
       }
     }
-    goHome();
-  };
+    setCategoriaDetectada(category);
+  setMostrarBotonFinal(true);
+};
 
   const enviarRespuestas = async () => {
     setError(null);
@@ -292,87 +296,108 @@ export default function ComenzarPage() {
             </div>
 
             <div className="px-6 pb-7 pt-6 md:px-10 md:pb-10 md:pt-8">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={paso}
-                  initial={{ opacity: 0, y: 24, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                  transition={{ duration: 0.28 }}
+              {mostrarBotonFinal ? (
+                /* VISTA A: Perfilado completado */
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center justify-center space-y-8 py-14 text-center"
                 >
-                  <h1 className="text-[36px] font-extrabold leading-[1.08] tracking-[-0.02em] text-slate-900">
-                    {preguntas[paso].cuestion}
-                  </h1>
-
-                  <p className="mt-3 text-lg text-slate-600">
-                    Responde con naturalidad. Entre mas contexto des, mejor sera la experiencia.
-                  </p>
-
-                  <div className="mt-7 rounded-3xl border border-slate-200/90 bg-[linear-gradient(160deg,#f8fafc_0%,#f1f5f9_100%)] p-4 md:p-6">
-                    <div className="mb-3 flex items-center justify-between">
-                      <p className="text-sm font-bold uppercase tracking-[0.16em] text-emerald-800">
-                        {preguntas[paso].titulo}
-                      </p>
-                      <motion.p
-                        animate={{ opacity: focusTextarea ? 1 : 0.72 }}
-                        className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500"
-                      >
-                        {estadoTexto}
-                      </motion.p>
-                    </div>
-
-                    <motion.textarea
-                      key={`textarea-${paso}`}
-                      initial={{ opacity: 0.6 }}
-                      animate={{ opacity: 1 }}
-                      className="h-52 w-full resize-none rounded-2xl border border-slate-300 bg-white px-5 py-4 text-[30px] leading-relaxed text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 md:text-[18px]"
-                      value={respuestas[paso]}
-                      onChange={(e) => actualizarRespuesta(e.target.value)}
-                      onFocus={() => setFocusTextarea(true)}
-                      onBlur={() => setFocusTextarea(false)}
-                      placeholder={preguntas[paso].placeholder}
-                    />
-
+                  <div className="space-y-3">
+                    <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                      Hemos Finalizado
+                    </h2>
+                    <p className="text-slate-500 max-w-sm mx-auto leading-relaxed">
+                      Todo está listo para tus primeras consultas. Haz clic abajo para iniciar tu sesión personalizada.
+                    </p>
                   </div>
-
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-                    >
-                      {error}
-                    </motion.div>
-                  )}
+                  <BotonAcceso perfilDetectado={categoriaDetectada} />
                 </motion.div>
-              </AnimatePresence>
+              ) : (
+                /* VISTA B: El cuestionario */
+                <>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={paso}
+                      initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                      transition={{ duration: 0.28 }}
+                    >
+                      <h1 className="text-[36px] font-extrabold leading-[1.08] tracking-[-0.02em] text-slate-900">
+                        {preguntas[paso].cuestion}
+                      </h1>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setPaso((prev) => Math.max(0, prev - 1))}
-                  disabled={paso === 0 || enviando}
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-6 py-3.5 text-base font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
-                >
-                  Anterior
-                </motion.button>
+                      <p className="mt-3 text-lg text-slate-600">
+                        Responde con naturalidad. Entre mas contexto des, mejor sera la experiencia.
+                      </p>
 
-                <motion.button
-                  type="button"
-                  whileHover={puedeContinuar ? { y: -2 } : {}}
-                  whileTap={puedeContinuar ? { scale: 0.99 } : {}}
-                  onClick={siguiente}
-                  disabled={!puedeContinuar}
-                  className="w-full flex-1 rounded-2xl bg-[linear-gradient(90deg,#0f766e_0%,#059669_60%,#10b981_100%)] py-3.5 text-base font-extrabold text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {enviando
-                    ? "Guardando..."
-                    : paso === preguntas.length - 1
-                      ? "Continuar al chat"
-                      : "Siguiente"}
-                </motion.button>
-              </div>
+                      <div className="mt-7 rounded-3xl border border-slate-200/90 bg-[linear-gradient(160deg,#f8fafc_0%,#f1f5f9_100%)] p-4 md:p-6">
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-sm font-bold uppercase tracking-[0.16em] text-emerald-800">
+                            {preguntas[paso].titulo}
+                          </p>
+                          <motion.p
+                            animate={{ opacity: focusTextarea ? 1 : 0.72 }}
+                            className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500"
+                          >
+                            {estadoTexto}
+                          </motion.p>
+                        </div>
+
+                        <motion.textarea
+                          key={`textarea-${paso}`}
+                          initial={{ opacity: 0.6 }}
+                          animate={{ opacity: 1 }}
+                          className="h-52 w-full resize-none rounded-2xl border border-slate-300 bg-white px-5 py-4 text-[20px] leading-relaxed text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                          value={respuestas[paso]}
+                          onChange={(e) => actualizarRespuesta(e.target.value)}
+                          onFocus={() => setFocusTextarea(true)}
+                          onBlur={() => setFocusTextarea(false)}
+                          placeholder={preguntas[paso].placeholder}
+                        />
+                      </div>
+
+                      {error && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+                        >
+                          {error}
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setPaso((prev) => Math.max(0, prev - 1))}
+                      disabled={paso === 0 || enviando}
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-6 py-3.5 text-base font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                    >
+                      Anterior
+                    </motion.button>
+
+                    <motion.button
+                      type="button"
+                      whileHover={puedeContinuar ? { y: -2 } : {}}
+                      whileTap={puedeContinuar ? { scale: 0.99 } : {}}
+                      onClick={siguiente}
+                      disabled={!puedeContinuar}
+                      className="w-full flex-1 rounded-2xl bg-[linear-gradient(90deg,#0f766e_0%,#059669_60%,#10b981_100%)] py-3.5 text-base font-extrabold text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      {enviando
+                        ? "Guardando..."
+                        : paso === preguntas.length - 1
+                          ? "Finalizar análisis"
+                          : "Siguiente"}
+                    </motion.button>
+                  </div>
+                </>
+              )}
             </div>
           </motion.section>
         )}

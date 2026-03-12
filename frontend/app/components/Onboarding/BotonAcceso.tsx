@@ -24,7 +24,7 @@ export default function BotonAcceso({ perfilDetectado }: Props) {
       onClick={manejarIngreso}
       className="bg-[#0b332a] text-white px-12 py-4 rounded-sm font-medium hover:bg-[#124d40] transition-all tracking-widest uppercase text-sm shadow-xl"
     >
-      Ingresar al Observatorio
+      Usar AECO IA
     </button>
   );
 }
