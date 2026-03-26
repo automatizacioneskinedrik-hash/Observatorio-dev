@@ -1,45 +1,30 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode, Dispatch, SetStateAction, CSSProperties } from "react";
+import type { Dispatch, SetStateAction, CSSProperties } from "react";
 import type { Conversation } from "../types/conversation";
+import type { User } from "../types/user";
 
 type Mode = "observatorio" | "personas" | "invitaciones";
 
 type Props = {
   menuOpen: boolean;
   setMenuOpen: Dispatch<SetStateAction<boolean>>;
-
-  user: { name: string; subscription: string } | null;
+  user: User | null;
   onUserClick?: () => void;
-
   menu: ReadonlyArray<{
     id: Mode;
     label: string;
-    icon: ReactNode;
+    icon: React.ReactNode;
   }>;
-
   onSelect?: (id: Mode) => void;
   activeId: Mode | null;
-
   conversations: Conversation[];
   activeConvId: string | null;
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => void;
 };
-
-function PencilIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path
-        d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function MicrophoneIcon({ size = 16 }: { size?: number }) {
   return (
@@ -58,6 +43,22 @@ function MicrophoneIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+const itemBase: CSSProperties = {
+  padding: "10px 10px",
+  borderRadius: 10,
+  cursor: "pointer",
+  userSelect: "none",
+  fontSize: 14,
+  fontWeight: 520,
+  color: "var(--kv-text)",
+  border: "1px solid transparent",
+  background: "transparent",
+  transition: "all 160ms ease",
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
 export function Sidebar({
   user,
   menuOpen,
@@ -72,178 +73,164 @@ export function Sidebar({
   onRenameConversation,
   onUserClick,
 }: Props) {
-  const sorted = conversations.slice().sort((a, b) => b.updatedAt - a.updatedAt);
 
-  const itemBase: CSSProperties = {
-    padding: "10px 10px",
-    borderRadius: 10,
-    cursor: "pointer",
-    userSelect: "none",
-    fontSize: 14,
-    fontWeight: 520,
-    color: "var(--kv-text)",
-    border: "1px solid transparent",
-    background: "transparent",
-    transition: "all 160ms ease",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  };
-
-  const applyHover = (el: HTMLDivElement, active: boolean) => {
-    if (active) return;
-    el.style.background = "rgba(0,168,132,0.08)"; // 👈 más sutil
-  };
-
-
-  const removeHover = (el: HTMLDivElement, active: boolean) => {
-    if (active) return;
-    el.style.background = "transparent";
-    el.style.border = "1px solid transparent";
-  };
+  if (!menuOpen) {
+    return (
+      <aside 
+        className="w-[84px] h-screen flex flex-col items-center py-8 gap-10 transition-all duration-300 z-50 overflow-hidden bg-transparent"
+      >
+        <button 
+          onClick={() => setMenuOpen(true)}
+          className="material-symbols-outlined text-[32px] cursor-pointer hover:scale-110 active:scale-95 transition-all"
+          style={{ color: "var(--kv-brand-accent)" }}
+        >
+          database
+        </button>
+        <button 
+          onClick={onNewConversation}
+          className="size-12 flex items-center justify-center rounded-xl shadow-lg cursor-pointer hover:opacity-90 active:scale-90 transition-all border border-white/10"
+          style={{ backgroundColor: "var(--kv-brand-accent)", color: "white" }}
+        >
+          <span className="material-symbols-outlined text-2xl font-bold">add</span>
+        </button>
+        <div className="mt-auto">
+          <button 
+            onClick={onUserClick}
+            className="size-12 rounded-full border-2 p-0.5 overflow-hidden shadow-sm cursor-pointer hover:ring-2 transition-all"
+            style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
+          >
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt={user.name} className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "var(--kv-accent-bg)" }}>
+                 <span className="material-symbols-outlined text-xl font-bold" style={{ color: "var(--kv-brand-accent)" }}>person</span>
+              </div>
+            )}
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
   return (
-    <aside
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        width: menuOpen ? "260px" : "84px",
-        transition: "width 260ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-        padding: "22px",
-        borderRight: "1px solid var(--kv-border)",
-        background: "var(--kv-panel)",
-        color: "var(--kv-text)",
-        backdropFilter: "blur(10px)",
-        gap: "6px",
-        willChange: "width",
-      }}
+    <aside 
+      className="w-[310px] h-screen flex flex-col shrink-0 transition-all duration-300 relative z-20 overflow-hidden bg-transparent"
     >
-      {/* Encabezado / expandir */}
-      <button
-        onClick={() => setMenuOpen((v) => !v)}
-        style={{
-          all: "unset",
-          cursor: "pointer",
-          color: "var(--kv-text)",
-          letterSpacing: "0.6px",
-          fontWeight: 650,
-          display: "inline-block",
-          fontSize: "18px",
-        }}
-        aria-expanded={menuOpen}
-        title="Mostrar/ocultar menú"
-      >
-        {menuOpen ? (
-          <>
-            <span style={{ color: "var(--kv-brand-main)", fontWeight: 700 }}>AECO</span>{" "}
-            <span style={{ color: "var(--kv-brand-accent)", fontWeight: 700 }}>IA</span>
-          </>
-        ) : (
-          "AI"
-        )}
-      </button>
-
-      {/* Nuevo chat + botones */}
-      {menuOpen && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {/* Nuevo chat */}
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={onNewConversation}
-            onKeyDown={(e) => e.key === "Enter" && onNewConversation()}
-            style={{ ...itemBase }}
-            onMouseEnter={(e) => applyHover(e.currentTarget, false)}
-            onMouseLeave={(e) => removeHover(e.currentTarget, false)}
+      {/* Header */}
+      <div className="p-8 pb-3">
+        <div className="flex items-center gap-4">
+          <div 
+            className="size-10 rounded-xl flex items-center justify-center shadow-sm"
+            style={{ backgroundColor: "var(--kv-accent-bg)" }}
           >
-            <span style={{ display: "flex", alignItems: "center" }}>
-              <PencilIcon size={16} />
-            </span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              Nuevo chat
-            </span>
+             <span className="material-symbols-outlined text-3xl font-bold" style={{ color: "var(--kv-brand-accent)" }}>database</span>
           </div>
+          <h1 className="text-[19px] font-black tracking-tight leading-none uppercase" style={{ color: "var(--kv-text)" }}>AECO IA</h1>
+        </div>
+        <p 
+          className="text-[10px] font-black uppercase tracking-[0.3em] mt-3.5 ml-1 opacity-60"
+          style={{ color: "var(--kv-subtext)" }}
+        >
+          ENTERPRISE AI V2.0
+        </p>
+      </div>
 
-          {/* Observatorio / Personas / Invitaciones */}
-          {menu.map((item) => {
-            const active = activeId === item.id;
-            return (
-              <div
-                key={item.id}
-                onClick={() => onSelect?.(item.id)}
-                style={{
-                  ...itemBase,
-                  fontWeight: active ? 650 : 520,
-                }}
-                onMouseEnter={(e) => applyHover(e.currentTarget, active)}
-                onMouseLeave={(e) => removeHover(e.currentTarget, active)}
+      {/* Context Card */}
+      <div className="px-6 mt-6 mb-8">
+        <div 
+          className="rounded-[28px] p-6 shadow-sm border border-black/[0.03] relative overflow-hidden group"
+          style={{ backgroundColor: "var(--kv-panel)" }}
+        >
+          <h2 
+            className="text-[11px] font-black uppercase tracking-[0.2em] mb-5 opacity-50"
+            style={{ color: "var(--kv-subtext)" }}
+          >
+            CONTEXTO DEL ANALISTA
+          </h2>
+          <div className="space-y-4 relative z-10">
+            <div className="flex items-center gap-4 group/item cursor-default">
+              <div 
+                className="size-10 rounded-2xl flex items-center justify-center border shadow-sm transition-colors"
+                style={{ backgroundColor: "var(--kv-bg)", borderColor: "var(--kv-accent-bg)" }}
               >
-                <span style={{ display: "flex", alignItems: "center" }}>{item.icon}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {item.label}
-                </span>
+                <span className="material-symbols-outlined text-[20px] font-bold" style={{ color: "var(--kv-subtext)" }}>person_search</span>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Chats (centro, con scroll) */}
-      {menuOpen && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0, marginTop: 6 }}>
-          <div style={{ fontSize: 12, color: "var(--kv-brand-accent)", letterSpacing: "0.4px" }}>
-            Chats
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0 }}>
-            {sorted.map((c) => {
-              const active = c.id === activeConvId;
-              return (
-                <div
-                  key={c.id}
-                  onClick={() => onSelectConversation(c.id)}
-                  onDoubleClick={() => {
-                    const next = prompt("Renombrar conversación", c.title);
-                    if (next && next.trim()) onRenameConversation(c.id, next.trim());
-                  }}
-                  style={{
-                    ...itemBase,
-                    fontSize: 13,
-
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start", // 🔥 importante
-
-                    paddingLeft: 12, // opcional para que respire
-                    textAlign: "left",
-
-                    background: active ? "rgba(0,168,132,0.10)" : "transparent",
-                    fontWeight: 520,
-                  }}
-                  onMouseEnter={(e) => applyHover(e.currentTarget, active)}
-                  onMouseLeave={(e) => removeHover(e.currentTarget, active)}
-                >
-                  <span
-                    style={{
-                      display: "block",
-                      width: "100%", // 🔥 clave para evitar centrado visual
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      textAlign: "left",
-                    }}
-                  >
-                    {c.title.charAt(0).toUpperCase() + c.title.slice(1)}
-                  </span>
-                </div>
-
-              );
-            })}
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest leading-none mb-1 opacity-40" style={{ color: "var(--kv-subtext)" }}>Perfil detectado</p>
+                <p className="text-[14.5px] font-black leading-tight truncate" style={{ color: "var(--kv-text)" }}>{user?.role || "Arquitecto Senior"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 group/item cursor-default">
+              <div 
+                className="size-10 rounded-2xl flex items-center justify-center border shadow-sm transition-colors"
+                style={{ backgroundColor: "var(--kv-bg)", borderColor: "var(--kv-accent-bg)" }}
+              >
+                <span className="material-symbols-outlined text-[20px] font-bold" style={{ color: "var(--kv-subtext)" }}>public</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest leading-none mb-1 opacity-40" style={{ color: "var(--kv-subtext)" }}>Nivel sectorial</p>
+                <p className="text-[14.5px] font-black leading-tight truncate" style={{ color: "var(--kv-text)" }}>Global / Normativo</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 group/item cursor-default">
+              <div 
+                className="size-10 rounded-2xl flex items-center justify-center border shadow-sm transition-colors"
+                style={{ backgroundColor: "var(--kv-bg)", borderColor: "var(--kv-accent-bg)" }}
+              >
+                <span className="material-symbols-outlined text-[20px] font-bold" style={{ color: "var(--kv-subtext)" }}>category</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest leading-none mb-1 opacity-40" style={{ color: "var(--kv-subtext)" }}>Categoría AEC</p>
+                <p className="text-[14.5px] font-black leading-tight truncate" style={{ color: "var(--kv-text)" }}>Innovación Digital</p>
+              </div>
+            </div>
           </div>
         </div>
-      )}
-      
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-6 overflow-y-auto scrollbar-hide">
+        <h2 
+          className="text-[11px] font-black uppercase tracking-[0.2em] px-3 mb-5 opacity-40"
+          style={{ color: "var(--kv-subtext)" }}
+        >
+          NAVEGACIÓN
+        </h2>
+        <div className="space-y-2">
+          {/* Active Link (Card style) */}
+          <div 
+            className="rounded-2xl shadow-sm border flex items-center gap-4 px-4 py-3.5 cursor-pointer group hover:shadow-md transition-all"
+            style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
+          >
+            <span className="material-symbols-outlined text-[22px] font-bold" style={{ color: "var(--kv-brand-accent)" }}>chat_bubble</span>
+            <span className="text-[14.5px] font-black tracking-tight" style={{ color: "var(--kv-brand-accent)" }}>Chat Actual</span>
+          </div>
+
+          <div 
+            className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
+            style={{ color: "var(--kv-subtext)" }}
+          >
+            <span className="material-symbols-outlined text-[22px] font-bold opacity-40 group-hover:opacity-100 transition-opacity">history</span>
+            <span className="text-[14.5px] font-bold tracking-tight">Historial</span>
+          </div>
+
+          <div 
+            className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
+            style={{ color: "var(--kv-subtext)" }}
+          >
+            <span className="material-symbols-outlined text-[22px] font-bold opacity-40 group-hover:opacity-100 transition-opacity">bar_chart</span>
+            <span className="text-[14.5px] font-bold tracking-tight">Analítica AEC</span>
+          </div>
+
+          <div 
+            className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
+            style={{ color: "var(--kv-subtext)" }}
+          >
+            <span className="material-symbols-outlined text-[22px] font-bold opacity-40 group-hover:opacity-100 transition-opacity">description</span>
+            <span className="text-[14.5px] font-bold tracking-tight">Biblioteca Técnica</span>
+          </div>
+        </div>
+      </nav>
 
       {/* Acceso rápido a audio entrevista */}
       {menuOpen && (
@@ -251,7 +238,7 @@ export function Sidebar({
           href="/evaluacion"
           style={{
             ...itemBase,
-            marginTop: "auto",
+            margin: "auto 24px 0 24px",
             background: "rgba(0,168,132,0.1)",
             border: "1px solid rgba(0,168,132,0.22)",
           }}
@@ -265,48 +252,59 @@ export function Sidebar({
           <span style={{ display: "flex", alignItems: "center" }}>
             <MicrophoneIcon size={16} />
           </span>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
             Audio entrevista
           </span>
         </Link>
       )}
 
-      {/* Usuario abajo (sin engranaje) */}
-      {menuOpen && (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={onUserClick}
-          onKeyDown={(e) => e.key === "Enter" && onUserClick?.()}
-          style={{
-            paddingTop: 14,
-            borderTop: "1px solid var(--kv-border)",
-          }}
+      {/* Footer Details */}
+      <div className="p-7 space-y-7 relative">
+        <button 
+          onClick={onNewConversation}
+          className="w-full p-5 rounded-[22px] font-black text-[15.5px] flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 cursor-pointer group"
+          style={{ backgroundColor: "var(--kv-brand-accent)", color: "white" }}
         >
-          <div
-            style={{ ...itemBase }}
-            onMouseEnter={(e) => applyHover(e.currentTarget as HTMLDivElement, false)}
-            onMouseLeave={(e) => removeHover(e.currentTarget as HTMLDivElement, false)}
-            title={user ? "Ver cuenta / suscripción" : "Iniciar sesión / registrarse"}
+          <span className="material-symbols-outlined text-[20px] font-bold">add</span>
+          Nuevo Chat
+        </button>
+
+        <div className="flex items-center justify-between group px-2">
+          <div 
+            onClick={onUserClick}
+            className="flex items-center gap-4 cursor-pointer hover:opacity-100 transition-all flex-1 min-w-0 group/profile"
           >
-            <span style={{ width: 16, display: "inline-block" }} />
-            <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-              {user ? (
-                <>
-                  <div style={{ fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {user.name}
-                  </div>
-                  <div style={{ fontSize: 12, opacity: 0.65, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {user.subscription}
-                  </div>
-                </>
+            <div 
+              className="size-13 rounded-full p-0.5 overflow-hidden ring-4 ring-white shadow-xl border shrink-0 transition-transform group-hover/profile:scale-105"
+              style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
+            >
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt={user.name} className="w-full h-full object-cover rounded-full" />
               ) : (
-                <div style={{ opacity: 0.7, fontSize: 14 }}>No registrado</div>
+                <div className="w-full h-full flex items-center justify-center font-bold" style={{ backgroundColor: "var(--kv-accent-bg)", color: "var(--kv-brand-accent)" }}>
+                  {user?.name?.slice(0, 2).toUpperCase() || "EC"}
+                </div>
               )}
             </div>
+            <div className="flex flex-col min-w-0">
+              <h4 className="text-[16px] font-black truncate tracking-tighter leading-none mb-1.5" style={{ color: "var(--kv-text)" }}>{user?.name || "Invitado"}</h4>
+              <p 
+                className="text-[10px] font-black uppercase tracking-[0.15em] opacity-60 truncate"
+                style={{ color: "var(--kv-subtext)" }}
+              >
+                 {user?.subscription || "Plan Enterprise"}
+              </p>
+            </div>
           </div>
+          <button 
+            onClick={onUserClick}
+            className="material-symbols-outlined transition-all p-3 hover:bg-white rounded-2xl cursor-pointer hover:shadow-sm"
+            style={{ color: "var(--kv-subtext)" }}
+          >
+            settings
+          </button>
         </div>
-      )}
+      </div>
     </aside>
   );
 }

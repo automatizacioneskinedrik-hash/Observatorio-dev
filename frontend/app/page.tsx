@@ -1,16 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Chat from "./components/Chat";
-import { InfoModal } from "./components/InfoModal";
 import { Sidebar } from "./components/Sidebar";
-import { ThemeToggleFab } from "./components/ThemeToggleFab";
 import { AuthGate } from "./components/auth/AuthGate";
 import { MENU } from "./constants/menu";
-import { InvitacionesPanel } from "./components/panels/InvitacionesPanel";
-import { ObservatorioPanel } from "./components/panels/ObservatorioPanel";
-import { PersonasPanel } from "./components/panels/PersonasPanel";
 import { useChatConversations } from "./hooks/useChatConversations";
 import type { User } from "./types/user";
 import { useSocialAuth } from "./hooks/useSocialAuth";
@@ -24,16 +19,20 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(true);
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
+
   const handleAuthSuccess = useCallback((nextUser: User) => {
     setUser(nextUser);
   }, []);
+
   const { logout, authLoading } = useSocialAuth(handleAuthSuccess);
+  
   const sidebarMenu = MENU.filter((item) =>
-  ["observatorio", "personas", "invitaciones"].includes(item.id as Mode)
-);
+    ["observatorio", "personas", "invitaciones"].includes(item.id as Mode)
+  );
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
+  
   const {
     conversations,
     activeConvId,
@@ -67,45 +66,17 @@ export default function Home() {
     setPendingMode(id);
   };
 
-  const modalTitle =
-    pendingMode === "observatorio"
-      ? "Observatorio"
-      : pendingMode === "personas"
-        ? "Personas"
-        : "Invitaciones";
-
-  if (authLoading && !user) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          backgroundColor: "var(--kv-bg)",
-          backgroundImage: "var(--kv-glow)",
-        }}
-      />
-    );
-  }
-
-  if (!user) {
-    return <AuthGate onAuthenticated={handleAuthSuccess} />;
-  }
-
-  if (user.isProfileComplete !== true) {
-    return null;
-  }
+  if (authLoading && !user) return <div className="h-screen" style={{ backgroundColor: "var(--kv-bg)" }} />;
+  if (!user) return <AuthGate onAuthenticated={handleAuthSuccess} />;
+  if (user.isProfileComplete !== true) return null;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        color: "var(--kv-text)",
-        fontFamily: "var(--font-neue-montreal), system-ui",
-        backgroundColor: "var(--kv-bg)",
-        backgroundImage: "var(--kv-glow)",
-        transition: "background-color 500ms ease, color 500ms ease",
-      }}
+    <div 
+      className="flex h-screen overflow-hidden font-sans text-slate-900 relative transition-colors duration-500"
+      style={{ backgroundColor: "var(--kv-bg)" }}
     >
+      <div className="shimmer-bg pointer-events-none opacity-20 absolute inset-0 z-0" />
+      
       <Sidebar
         user={user}
         menuOpen={menuOpen}
@@ -121,87 +92,54 @@ export default function Home() {
         onUserClick={() => setAuthOpen(true)}
       />
 
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: messages.length === 0 ? "center" : "flex-start",
-          padding: "24px",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "900px",
-            height: messages.length === 0 ? "auto" : "85vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: messages.length === 0 ? "center" : "flex-start",
-            transition: "all 300ms ease",
-          }}
-        >
-          <div
-            style={{
-              fontSize: messages.length === 0 ? "32px" : "18px",
-              fontWeight: 400,
-              textAlign: "center",
-              marginBottom: messages.length === 0 ? "24px" : "12px",
-              transition: "all 300ms ease",
-            }}
-          >
-            <span style={{ color: "var(--kv-brand-main)", fontWeight: 700 }}>AECO</span>{" "}
-            <span style={{ color: "var(--kv-brand-accent)", fontWeight: 700 }}>IA</span>
+      {/* Main Experience Layout (Bubble Concept) */}
+      <main className="flex-1 flex flex-col bg-white overflow-hidden relative shadow-[0_45px_120px_rgba(0,0,0,0.06)] z-10 transition-all duration-700 m-4 rounded-[42px] border border-white/40">
+        {/* Header */}
+        <header className="h-20 border-b border-slate-50 flex items-center justify-between px-12 shrink-0 bg-white/40 backdrop-blur-md">
+          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.25em] opacity-40">
+            <span className="hover:text-emerald-700 transition-colors cursor-pointer text-slate-400">AEC Observatory</span>
+            <span className="material-symbols-outlined text-[10px]">chevron_right</span>
+            <span className="opacity-100" style={{ color: "var(--kv-brand-accent)" }}>Artificial Intelligence</span>
           </div>
+          <div className="flex items-center gap-6">
+            <div className="group flex items-center gap-3 px-5 py-2.5 rounded-full border border-emerald-900/10 transition-all hover:bg-emerald-900/5 cursor-pointer" style={{ backgroundColor: "var(--kv-accent-bg)" }}>
+              <span className="flex size-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)] animate-pulse"></span>
+              <span className="text-[10px] font-black uppercase tracking-widest leading-none" style={{ color: "var(--kv-brand-accent)" }}>Kernel Optimizando</span>
+            </div>
+            <div className="flex items-center gap-2">
+               <button className="material-symbols-outlined p-3 transition-all text-xl hover:bg-neutral-light rounded-2xl cursor-pointer" style={{ color: "var(--kv-subtext)" }}>share</button>
+               <button className="material-symbols-outlined p-3 transition-all text-xl hover:bg-neutral-light rounded-2xl cursor-pointer" style={{ color: "var(--kv-subtext)" }}>bookmark</button>
+            </div>
+          </div>
+        </header>
 
-          <Chat
-            messages={messages}
-            bottomRef={bottomRef}
-            input={input}
-            setInput={setInput}
-            send={send}
-            loading={loading}
-            onEditUserMessage={onEditUserMessage}
-          />
-        </div>
+        {/* Chat Stream Section */}
+        <Chat
+          messages={messages}
+          bottomRef={bottomRef}
+          input={input}
+          setInput={setInput}
+          send={send}
+          loading={loading}
+          onEditUserMessage={onEditUserMessage}
+          userPhoto={user.photoURL}
+        />
       </main>
 
-      {pendingMode && (
-        <InfoModal
-          title={modalTitle}
-          onClose={() => setPendingMode(null)}
-          onAccept={() => {
-            setActiveMode(pendingMode);
-            setPendingMode(null);
-          }}
-          acceptText="Aceptar"
-        >
-          {pendingMode === "observatorio" && <ObservatorioPanel />}
-          {pendingMode === "personas" && <PersonasPanel />}
-          {pendingMode === "invitaciones" && <InvitacionesPanel />}
-        </InfoModal>
-      )}
-
-      {authOpen && user && (
-        <InfoModal
-          title="Cuenta"
-          onClose={() => setAuthOpen(false)}
-          onAccept={() => {
-            setAuthOpen(false);
-            void logout();
-          }}
-          acceptText="Cerrar sesión"
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontWeight: 650 }}>{user.name}</div>
-            <div style={{ opacity: 0.8 }}>{user.email}</div>
-            <div style={{ opacity: 0.7 }}>{user.subscription}</div>
-            {/* El botón de logout ahora es el botón principal del modal */}
-          </div>
-        </InfoModal>
-      )}
-
-      <ThemeToggleFab />
+      <style jsx global>{`
+        .shimmer-bg {
+          background: linear-gradient(120deg, rgba(16, 185, 129, 0) 15%, rgba(16, 185, 129, 0.05) 50%, rgba(16, 185, 129, 0) 85%);
+          background-size: 200% 200%;
+          animation: shimmer 12s linear infinite;
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }

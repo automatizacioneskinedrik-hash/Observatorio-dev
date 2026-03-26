@@ -4,4 +4,6 @@ export type User = {
   subscription: "Free" | "Pro" | "Enterprise";
   isProfileComplete?: boolean;
   profileCategory?: string | null;
+  photoURL?: string | null;
+  role?: string | null;
 };
