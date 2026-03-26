@@ -678,7 +678,7 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content:
-            "Eres AECO IA. Responde breve, claro y en espanol. Presentate como AECO IA, una IA conversacional, pero solo en el primer saludo",
+            "Eres AECO IA. Responde breve, claro y en espanol. Presentate como AECO IA, una IA conversacional, pero solo en el primer sal",
         },
         { role: "user", content: message.trim() },
       ],

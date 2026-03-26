@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode, Dispatch, SetStateAction, CSSProperties } from "react";
 import type { Conversation } from "../types/conversation";
 
@@ -36,6 +37,23 @@ function PencilIcon({ size = 16 }: { size?: number }) {
         strokeWidth="2"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function MicrophoneIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M19 11a7 7 0 0 1-14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 18v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M8 21h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -227,6 +245,32 @@ export function Sidebar({
       )}
       
 
+      {/* Acceso rápido a audio entrevista */}
+      {menuOpen && (
+        <Link
+          href="/evaluacion"
+          style={{
+            ...itemBase,
+            marginTop: "auto",
+            background: "rgba(0,168,132,0.1)",
+            border: "1px solid rgba(0,168,132,0.22)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(0,168,132,0.16)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(0,168,132,0.1)";
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center" }}>
+            <MicrophoneIcon size={16} />
+          </span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            Audio entrevista
+          </span>
+        </Link>
+      )}
+
       {/* Usuario abajo (sin engranaje) */}
       {menuOpen && (
         <div
@@ -235,7 +279,6 @@ export function Sidebar({
           onClick={onUserClick}
           onKeyDown={(e) => e.key === "Enter" && onUserClick?.()}
           style={{
-            marginTop: "auto",
             paddingTop: 14,
             borderTop: "1px solid var(--kv-border)",
           }}

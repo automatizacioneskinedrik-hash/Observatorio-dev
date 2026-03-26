@@ -10,23 +10,9 @@ export default function BotonAcceso({ perfilDetectado }: Props) {
   const router = useRouter();
 
   const manejarIngreso = () => {
-    
-    const perfilesEstrategicos = ['CEO', 'Dueño', 'Inversor'];
-
-    const perfilesEvaluacion = ['Líder Directivo', 'Coordinador', 'Técnico Profesional'];
-
     console.log("Perfil procesado:", perfilDetectado);
-
-    if (perfilesEstrategicos.includes(perfilDetectado)) {
-    
-      router.push('/');
-    } else if (perfilesEvaluacion.includes(perfilDetectado)) {
-      
-      router.push('/evaluacion');
-    } else {
-      
-      router.push('/');
-    }
+    // Redirige a todos directamente al chat
+    router.push('/chat'); 
   };
 
   return (
