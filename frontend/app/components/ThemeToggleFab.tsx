@@ -61,20 +61,24 @@ function MoonIcon({ size = 18 }: { size?: number }) {
 }
 
 export function ThemeToggleFab() {
-    const [theme, setThemeState] = useState<Theme>(() => {
+    const [theme, setThemeState] = useState<Theme>("light" /*() => {
         if (typeof window === "undefined") return "light";
         return getTheme();
-    });
+    }*/);
 
     useEffect(() => {
-        applyTheme(theme);
-    }, [theme]);
+        /*applyTheme(theme);
+    }, [theme]);*/
+        applyTheme("light");
+    }, []);
 
     const toggle = () => {
-        const next: Theme = theme === "dark" ? "light" : "dark";
+        /*const next: Theme = theme === "dark" ? "light" : "dark";
         setThemeState(next);
-        applyTheme(next);
+        applyTheme(next);*/
     };
+
+    return null; // 👈 Boton visualmente oculto
 
     return (
         <button
