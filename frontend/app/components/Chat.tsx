@@ -9,7 +9,7 @@ type Props = {
   bottomRef: React.RefObject<HTMLDivElement | null>;
   loading: boolean;
   onEditUserMessage?: (messageId: string, newText: string) => void;
-  userPhoto?: string;
+  userPhoto?: string | null;
   input: string;
   setInput: (val: string) => void;
   send: () => void;
