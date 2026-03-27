@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { defaultTitleFromFirstUserMessage, uid } from "../lib/chatTemp";
 import type { ChatMessage } from "../types/chat";
 import type { Conversation } from "../types/conversation";
@@ -31,6 +31,26 @@ export function useChatConversations({
   const [draftMessages, setDraftMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const typingTimers = useRef<Record<string, number>>({});
+
+  const clearTypingTimer = (messageId: string) => {
+    const timerId = typingTimers.current[messageId];
+    if (timerId) {
+      globalThis.clearTimeout(timerId);
+      delete typingTimers.current[messageId];
+    }
+  };
+
+  const clearAllTypingTimers = () => {
+    Object.values(typingTimers.current).forEach((timerId) => globalThis.clearTimeout(timerId));
+    typingTimers.current = {};
+  };
+
+  useEffect(() => {
+    return () => {
+      clearAllTypingTimers();
+    };
+  }, []);
 
   const activeConv = useMemo(
     () => conversations.find((c) => c.id === activeConvId) ?? null,
@@ -46,6 +66,7 @@ export function useChatConversations({
     setActiveConvIdState(null);
     setDraftMessages([]);
     setInput("");
+    clearAllTypingTimers();
   };
 
   const onRenameConversation = (id: string, title: string) => {
@@ -55,6 +76,7 @@ export function useChatConversations({
   };
 
   const replaceAssistantText = (convId: string, assistantMsgId: string, text: string) => {
+    clearTypingTimer(assistantMsgId);
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== convId) return c;
@@ -65,6 +87,29 @@ export function useChatConversations({
         };
       })
     );
+  };
+
+  const typeAssistantText = (convId: string, assistantMsgId: string, fullText: string) => {
+    clearTypingTimer(assistantMsgId);
+
+    if (!fullText) {
+      replaceAssistantText(convId, assistantMsgId, "");
+      return;
+    }
+
+    const chunkSize = Math.max(1, Math.ceil(fullText.length / 60));
+    let index = 0;
+
+    const step = () => {
+      index = Math.min(fullText.length, index + chunkSize);
+      replaceAssistantText(convId, assistantMsgId, fullText.slice(0, index));
+
+      if (index < fullText.length) {
+        typingTimers.current[assistantMsgId] = window.setTimeout(step, 32);
+      }
+    };
+
+    step();
   };
 
   const sendText = async (textRaw: string) => {
@@ -120,7 +165,7 @@ export function useChatConversations({
         body: JSON.stringify({ message: text }),
       });
       const data = await r.json();
-      replaceAssistantText(convId, assistantMsgId, data.reply ?? "");
+      typeAssistantText(convId, assistantMsgId, data.reply ?? "");
     } catch {
       replaceAssistantText(convId, assistantMsgId, "Error conectando con el servidor");
     } finally {

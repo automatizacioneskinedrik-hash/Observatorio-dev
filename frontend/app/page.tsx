@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import Chat from "./components/Chat";
 import { Sidebar } from "./components/Sidebar";
 import { AuthGate } from "./components/auth/AuthGate";
+import { InfoModal } from "./components/InfoModal";
 import { MENU } from "./constants/menu";
 import { useChatConversations } from "./hooks/useChatConversations";
 import type { User } from "./types/user";
 import { useSocialAuth } from "./hooks/useSocialAuth";
+import { Bookmark, ChevronRight, Share2 } from "lucide-react";
 
 type Mode = "observatorio" | "personas" | "invitaciones";
 
@@ -92,23 +94,49 @@ export default function Home() {
         onUserClick={() => setAuthOpen(true)}
       />
 
+      {authOpen && (
+        <InfoModal
+          title="Mi cuenta"
+          onClose={() => setAuthOpen(false)}
+          onAccept={() => {
+            setAuthOpen(false);
+            void logout();
+          }}
+          acceptText="Cerrar sesión"
+          cancelText="Cancelar"
+        >
+          <p>
+            <span className="font-semibold">Nombre:</span> {user.name || "Invitado"}
+          </p>
+          <p>
+            <span className="font-semibold">Correo:</span> {user.email || "No disponible"}
+          </p>
+          <p>
+            <span className="font-semibold">Suscripción:</span> {user.subscription || "Free"}
+          </p>
+        </InfoModal>
+      )}
+
       {/* Main Experience Layout (Bubble Concept) */}
       <main className="flex-1 flex flex-col bg-white overflow-hidden relative shadow-[0_45px_120px_rgba(0,0,0,0.06)] z-10 transition-all duration-700 m-4 rounded-[42px] border border-white/40">
         {/* Header */}
         <header className="h-20 border-b border-slate-50 flex items-center justify-between px-12 shrink-0 bg-white/40 backdrop-blur-md">
-          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.25em] opacity-40">
-            <span className="hover:text-emerald-700 transition-colors cursor-pointer text-slate-400">AEC Observatory</span>
-            <span className="material-symbols-outlined text-[10px]">chevron_right</span>
-            <span className="opacity-100" style={{ color: "var(--kv-brand-accent)" }}>Artificial Intelligence</span>
+          <div
+            className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.25em] opacity-40"
+            aria-hidden="true"
+            style={{ minWidth: 220 }}
+          >
+            <ChevronRight className="h-3 w-3 text-slate-400 opacity-0" />
           </div>
           <div className="flex items-center gap-6">
-            <div className="group flex items-center gap-3 px-5 py-2.5 rounded-full border border-emerald-900/10 transition-all hover:bg-emerald-900/5 cursor-pointer" style={{ backgroundColor: "var(--kv-accent-bg)" }}>
-              <span className="flex size-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)] animate-pulse"></span>
-              <span className="text-[10px] font-black uppercase tracking-widest leading-none" style={{ color: "var(--kv-brand-accent)" }}>Kernel Optimizando</span>
-            </div>
+            <div style={{ width: 0 }} />
             <div className="flex items-center gap-2">
-               <button className="material-symbols-outlined p-3 transition-all text-xl hover:bg-neutral-light rounded-2xl cursor-pointer" style={{ color: "var(--kv-subtext)" }}>share</button>
-               <button className="material-symbols-outlined p-3 transition-all text-xl hover:bg-neutral-light rounded-2xl cursor-pointer" style={{ color: "var(--kv-subtext)" }}>bookmark</button>
+               <button aria-label="Compartir" className="p-3 transition-all text-xl hover:bg-neutral-light rounded-2xl cursor-pointer" style={{ color: "var(--kv-subtext)" }}>
+                 <Share2 size={20} />
+               </button>
+               <button aria-label="Marcador" className="p-3 transition-all text-xl hover:bg-neutral-light rounded-2xl cursor-pointer" style={{ color: "var(--kv-subtext)" }}>
+                 <Bookmark size={20} />
+               </button>
             </div>
           </div>
         </header>

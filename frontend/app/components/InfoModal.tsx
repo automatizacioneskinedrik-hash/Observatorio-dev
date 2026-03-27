@@ -23,8 +23,8 @@ export function InfoModal({
             style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(0,0,0,0.45)",
-                backdropFilter: "blur(6px)",
+                background: "rgba(15,23,42,0.65)",
+                backdropFilter: "blur(10px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -37,12 +37,12 @@ export function InfoModal({
                 style={{
                     width: 520,
                     maxWidth: "100%",
-                    background: "var(--kv-panel)",
-                    border: "1px solid var(--kv-border)",
-                    borderRadius: 16,
-                    padding: 22,
+                    background: "linear-gradient(145deg,#ffffff,#f4faf8)",
+                    border: "1px solid rgba(15,23,42,0.08)",
+                    borderRadius: 20,
+                    padding: 26,
                     color: "var(--kv-text)",
-                    boxShadow: "0 30px 80px rgba(0,0,0,0.35)",
+                    boxShadow: "0 40px 100px rgba(15,23,42,0.35)",
                 }}
             >
                 {/* Header */}
@@ -87,27 +87,42 @@ export function InfoModal({
                 </div>
 
                 {/* Body */}
-                <div style={{ color: "var(--kv-text)" }}>{children}</div>
+                <div
+                    style={{
+                        color: "var(--kv-text)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
+                        marginTop: 8,
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        background: "rgba(16,185,129,0.08)",
+                        border: "1px dashed rgba(16,185,129,0.35)",
+                    }}
+                >
+                    {children}
+                </div>
 
                 {/* Actions */}
                 <div
                     style={{
                         display: "flex",
                         justifyContent: "flex-end",
-                        gap: 10,
-                        marginTop: 18,
+                        gap: 12,
+                        marginTop: 26,
                     }}
                 >
                     <button
                         type="button"
                         onClick={onClose}
                         style={{
-                            padding: "10px 14px",
-                            borderRadius: 10,
-                            border: "1px solid var(--kv-border)",
+                            padding: "10px 16px",
+                            borderRadius: 12,
+                            border: "1px solid rgba(15,23,42,0.2)",
                             background: "transparent",
                             color: "var(--kv-text)",
                             cursor: "pointer",
+                            fontWeight: 600,
                         }}
                     >
                         {cancelText}
@@ -117,16 +132,16 @@ export function InfoModal({
                         type="button"
                         onClick={onAccept}
                         style={{
-                            padding: "10px 14px",
-                            borderRadius: 10,
-                            border: "1px solid #00A884",
-                            background: "rgba(0,168,132,0.18)",
+                            padding: "10px 18px",
+                            borderRadius: 12,
+                            border: "1px solid #0f766e",
+                            background: "linear-gradient(135deg, rgba(16,118,110,0.15), rgba(16,185,129,0.25))",
                             color: "var(--kv-text)",
                             cursor: "pointer",
-                            boxShadow: "0 0 0 3px rgba(0,168,132,0.15)",
-
+                            boxShadow: "0 0 25px rgba(16,185,129,0.25)",
+                            fontWeight: 700,
                         }}
-                    >
+                        >
                         {acceptText}
                     </button>
                 </div>

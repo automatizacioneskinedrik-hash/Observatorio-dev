@@ -82,10 +82,14 @@ export default function EvaluacionPage() {
   const { userName } = useLocalUserName();
   const [mounted, setMounted] = useState(false);
 
+  const [particleLayer, setParticleLayer] = useState<Particle[]>([]);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setMounted(true);
     setParticleLayer(createParticles());
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const initials = useMemo(() => (mounted ? getInitials(userName) : "??"), [userName, mounted]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -121,8 +125,6 @@ export default function EvaluacionPage() {
     filled: index < answeredCount,
     current: !allAnswered && index === currentQuestionIndex,
   }));
-  const [particleLayer, setParticleLayer] = useState<Particle[]>([]);
-
   const markQuestionAnswered = useCallback(() => {
     setJustAnswered(true);
     if (currentQuestionIndex === totalQuestions - 1) {
