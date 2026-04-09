@@ -113,6 +113,11 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
   );
 
   useEffect(() => {
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
 
