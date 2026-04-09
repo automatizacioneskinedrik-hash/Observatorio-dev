@@ -1,4 +1,4 @@
-import { IconTelescope, IconPeople, IconInvite, IconSearch } from "../components/icons";
+import { IconSearch } from "../components/icons";
 
 export const MENU = [
   { 

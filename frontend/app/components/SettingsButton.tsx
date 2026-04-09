@@ -17,7 +17,6 @@ export function SettingsButton() {
     }, []);
 
     useEffect(() => {
-        setTheme("light");
         localStorage.setItem("theme", "light");
         document.documentElement.classList.remove("dark");
     }, []);

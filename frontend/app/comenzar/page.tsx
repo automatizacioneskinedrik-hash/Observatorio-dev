@@ -167,7 +167,7 @@ const [categoriaDetectada, setCategoriaDetectada] = useState("");
     });
 
     return () => unsubscribe();
-  }, [auth, goHome, initialSessionInfo.profileComplete]);
+  }, [goHome, initialSessionInfo.profileComplete]);
 
   const actualizarRespuesta = (value: string) => {
     setRespuestas((prev) => {

@@ -10,6 +10,7 @@ import {
   Send,
   User,
 } from "lucide-react";
+import Image from "next/image";
 
 type Props = {
   messages: ChatMessage[];
@@ -63,7 +64,7 @@ export default function Chat({
                   <div key={m.id} className="flex gap-6 flex-row-reverse group animate-in fade-in slide-in-from-right-2 duration-300">
                     <div className="size-11 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-sm border-2 border-white ring-4 ring-emerald-500/5">
                       {userPhoto ? (
-                        <img src={userPhoto} alt="User" className="w-full h-full object-cover" />
+                        <Image src={userPhoto} alt="User" width={44} height={44} className="w-full h-full object-cover" />
                       ) : (
                         <User size={20} className="text-slate-400" />
                       )}
@@ -134,15 +135,15 @@ export default function Chat({
       {/* Input Area (Integrated) */}
       <div
         className="absolute left-0 right-0 z-30 pointer-events-none px-4"
-        style={showInitial ? { top: "50%", transform: "translateY(40%)" } : { bottom: 0 }}
+        style={showInitial ? { top: "50%", transform: "translateY(10%)" } : { bottom: "32px" }}
       >
         <div className="max-w-[940px] mx-auto px-6 pointer-events-auto">
           <div 
-            className="bg-white border rounded-[48px] p-6 shadow-[0_35px_100px_rgba(0,0,0,0.06)] transition-all relative group overflow-hidden" 
+            className="bg-white border rounded-[48px] p-4 shadow-[0_35px_100px_rgba(0,0,0,0.06)] transition-all relative group overflow-hidden" 
             style={{ borderColor: "var(--kv-accent-bg)" }}
           >
              {/* Core Input Field (NO BORDER UNTIL FOCUS) */}
-             <div className="bg-emerald-50/10 rounded-[32px] mb-4 relative z-10 transition-all group-focus-within:ring-4 group-focus-within:ring-emerald-500/10 group-focus-within:bg-white border-0 outline-none overflow-hidden">
+             <div className="bg-emerald-50/10 rounded-[32px] relative z-10 transition-all group-focus-within:ring-4 group-focus-within:ring-emerald-500/10 group-focus-within:bg-white border-0 outline-none overflow-hidden">
                 <div className="flex items-stretch gap-3 px-2 py-3">
                   <textarea
                     value={input}

@@ -6,21 +6,16 @@ import Chat from "./components/Chat";
 import { Sidebar } from "./components/Sidebar";
 import { AuthGate } from "./components/auth/AuthGate";
 import { InfoModal } from "./components/InfoModal";
-import { MENU } from "./constants/menu";
 import { useChatConversations } from "./hooks/useChatConversations";
 import type { User } from "./types/user";
 import { useSocialAuth } from "./hooks/useSocialAuth";
 import { Bookmark, ChevronRight, Share2 } from "lucide-react";
-
-type Mode = "observatorio" | "personas" | "invitaciones";
 
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(true);
-  const [activeMode, setActiveMode] = useState<Mode | null>(null);
-  const [pendingMode, setPendingMode] = useState<Mode | null>(null);
 
   const handleAuthSuccess = useCallback((nextUser: User) => {
     setUser(nextUser);
@@ -28,23 +23,15 @@ export default function Home() {
 
   const { logout, authLoading } = useSocialAuth(handleAuthSuccess);
   
-  const sidebarMenu = MENU.filter((item) =>
-    ["observatorio", "personas", "invitaciones"].includes(item.id as Mode)
-  );
-
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
   
   const {
-    conversations,
-    activeConvId,
     messages,
     input,
     loading,
     setInput,
-    setActiveConvId,
     onNewConversation,
-    onRenameConversation,
     send,
     onEditUserMessage,
   } = useChatConversations({ apiBase: API_BASE });
@@ -58,15 +45,6 @@ export default function Home() {
     if (user.isProfileComplete === true) return;
     router.replace("/comenzar");
   }, [router, user]);
-
-  const onPickMode = (id: Mode) => {
-    if (activeMode === id) {
-      setActiveMode(null);
-      setPendingMode(null);
-      return;
-    }
-    setPendingMode(id);
-  };
 
   if (authLoading && !user) return <div className="h-screen" style={{ backgroundColor: "var(--kv-bg)" }} />;
   if (!user) return <AuthGate onAuthenticated={handleAuthSuccess} />;
@@ -83,14 +61,7 @@ export default function Home() {
         user={user}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
-        menu={sidebarMenu as any}
-        activeId={activeMode}
-        onSelect={onPickMode}
-        conversations={conversations}
-        activeConvId={activeConvId}
         onNewConversation={onNewConversation}
-        onSelectConversation={setActiveConvId}
-        onRenameConversation={onRenameConversation}
         onUserClick={() => setAuthOpen(true)}
       />
 

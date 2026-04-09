@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { Dispatch, SetStateAction } from "react";
-import type { Conversation } from "../types/conversation";
 import type { User } from "../types/user";
 import {
   BarChart3,
@@ -18,25 +18,12 @@ import {
   User as UserIcon,
 } from "lucide-react";
 
-type Mode = "observatorio" | "personas" | "invitaciones";
-
 type Props = {
   menuOpen: boolean;
   setMenuOpen: Dispatch<SetStateAction<boolean>>;
   user: User | null;
   onUserClick?: () => void;
-  menu: ReadonlyArray<{
-    id: Mode;
-    label: string;
-    icon: React.ReactNode;
-  }>;
-  onSelect?: (id: Mode) => void;
-  activeId: Mode | null;
-  conversations: Conversation[];
-  activeConvId: string | null;
   onNewConversation: () => void;
-  onSelectConversation: (id: string) => void;
-  onRenameConversation: (id: string, title: string) => void;
 };
 
 const getUserInitials = (name?: string | null) => {
@@ -51,14 +38,7 @@ export function Sidebar({
   user,
   menuOpen,
   setMenuOpen,
-  menu,
-  onSelect,
-  activeId,
-  conversations,
-  activeConvId,
   onNewConversation,
-  onSelectConversation,
-  onRenameConversation,
   onUserClick,
 }: Props) {
   const initials = getUserInitials(user?.name);
@@ -91,7 +71,7 @@ export function Sidebar({
             style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
           >
             {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.name} className="w-full h-full object-cover rounded-full" />
+              <Image src={user.photoURL} alt={user.name || "User"} width={48} height={48} className="w-full h-full object-cover rounded-full" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "var(--kv-accent-bg)" }}>
                   <UserIcon size={20} className="text-[var(--kv-brand-accent)]" />
@@ -119,56 +99,6 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Context Card */}
-      <div className="px-6 mt-6 mb-8">
-        <div 
-          className="rounded-[28px] p-6 shadow-sm border border-black/[0.03] relative overflow-hidden group"
-          style={{ backgroundColor: "var(--kv-panel)" }}
-        >
-          <h2 
-            className="text-[11px] font-black uppercase tracking-[0.2em] mb-5 opacity-50"
-            style={{ color: "var(--kv-subtext)" }}
-          >
-            CONTEXTO DEL ANALISTA
-          </h2>
-          <div className="space-y-4 relative z-10">
-            <div className="flex items-center gap-4 group/item cursor-default">
-              <div
-                className="size-10 rounded-2xl flex items-center justify-center border shadow-sm transition-colors"
-                style={{ backgroundColor: "var(--kv-bg)", borderColor: "var(--kv-accent-bg)" }}
-              >
-                <Search size={20} className="text-[var(--kv-subtext)]" />
-              </div>
-              <p className="text-[10px] font-extrabold uppercase tracking-widest leading-none opacity-40" style={{ color: "var(--kv-subtext)" }}>
-                Perfil detectado
-              </p>
-            </div>
-            <div className="flex items-center gap-4 group/item cursor-default">
-              <div
-                className="size-10 rounded-2xl flex items-center justify-center border shadow-sm transition-colors"
-                style={{ backgroundColor: "var(--kv-bg)", borderColor: "var(--kv-accent-bg)" }}
-              >
-                <Globe2 size={20} className="text-[var(--kv-subtext)]" />
-              </div>
-              <p className="text-[10px] font-extrabold uppercase tracking-widest leading-none opacity-40" style={{ color: "var(--kv-subtext)" }}>
-                Nivel sectorial
-              </p>
-            </div>
-            <div className="flex items-center gap-4 group/item cursor-default">
-              <div
-                className="size-10 rounded-2xl flex items-center justify-center border shadow-sm transition-colors"
-                style={{ backgroundColor: "var(--kv-bg)", borderColor: "var(--kv-accent-bg)" }}
-              >
-                <Layers size={20} className="text-[var(--kv-subtext)]" />
-              </div>
-              <p className="text-[10px] font-extrabold uppercase tracking-widest leading-none opacity-40" style={{ color: "var(--kv-subtext)" }}>
-                Categoría AEC
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Navigation */}
       <nav className="flex-1 px-6 overflow-y-auto scrollbar-hide">
         <h2 
@@ -178,6 +108,15 @@ export function Sidebar({
           NAVEGACIÓN
         </h2>
         <div className="space-y-2">
+          <button
+            type="button"
+            onClick={onNewConversation}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl border border-emerald-800 bg-emerald-700 text-white shadow-sm active:scale-95 hover:shadow-lg"
+          >
+            <Edit3 size={18} />
+            <span className="text-[14.5px] font-black tracking-tight">Nuevo Chat</span>
+          </button>
+
           {/* Active Link (Card style) */}
           <div 
             className="rounded-2xl shadow-sm border flex items-center gap-4 px-4 py-3.5 cursor-pointer group hover:shadow-md transition-all"
@@ -203,13 +142,6 @@ export function Sidebar({
             <span className="text-[14.5px] font-bold tracking-tight">Analítica AEC</span>
           </div>
 
-          <div 
-            className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
-            style={{ color: "var(--kv-subtext)" }}
-          >
-            <FileText size={22} className="opacity-40 group-hover:opacity-100 transition-opacity" />
-            <span className="text-[14.5px] font-bold tracking-tight">Biblioteca Técnica</span>
-          </div>
         </div>
       </nav>
 
@@ -229,14 +161,6 @@ export function Sidebar({
 
       {/* Footer Details */}
           <div className="p-6 space-y-5 relative">
-              <button
-                onClick={onNewConversation}
-                className="w-full p-4 rounded-[28px] font-black text-[14px] flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer group bg-emerald-700 border border-emerald-800 text-white"
-              >
-                <Edit3 size={18} />
-                Nuevo Chat
-              </button>
-
           <div className="px-0 w-full">
             <button
               type="button"
@@ -248,7 +172,7 @@ export function Sidebar({
                 style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
               >
                 {user?.photoURL ? (
-                  <img src={user.photoURL} alt={user.name} className="w-full h-full object-cover rounded-full" />
+                  <Image src={user.photoURL} alt={user.name || "User"} width={52} height={52} className="w-full h-full object-cover rounded-full" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center font-bold" style={{ backgroundColor: "var(--kv-accent-bg)", color: "var(--kv-brand-accent)" }}>
                     {initials}

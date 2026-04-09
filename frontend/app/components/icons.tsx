@@ -149,7 +149,7 @@ export function IconTheme({
   );
 }
 
-export function IconSearch(props: any) {
+export function IconSearch(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg 
       width="18" 
