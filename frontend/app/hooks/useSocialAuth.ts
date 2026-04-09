@@ -157,43 +157,44 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
   }, [notifyAuthenticated, readLocalProfileState]);
 
   const signInWithGoogle = useCallback(async () => {
-  setAuthLoading(true);
-  setAuthError(null);
+    setAuthLoading(true);
+    setAuthError(null);
 
-  try {
-    if (!auth || !googleProvider) {
-      throw new Error("Firebase Auth no está disponible");
+    try {
+      if (!auth || !googleProvider || !db) {
+        throw new Error("Firebase Auth no está disponible");
+      }
+
+      const result = await signInWithPopup(auth, googleProvider);
+      const fbUser = result.user;
+
+      const userRef = doc(db, "usuarios", fbUser.uid);
+
+      await setDoc(
+        userRef,
+        {
+          name: fbUser.displayName || "Usuario Google",
+          email: fbUser.email || "",
+          subscription: "Free",
+          lastLogin: new Date().toISOString(),
+          photoURL: fbUser.photoURL,
+        },
+        { merge: true }
+      );
+
+      await notifyAuthenticated(fbUser);
+
+    } catch {
+      setAuthError("No se pudo iniciar sesion con Google");
+    } finally {
+      setAuthLoading(false);
     }
 
-    const result = await signInWithPopup(auth, googleProvider);
-    const fbUser = result.user;
-
-    const userRef = doc(db, "usuarios", fbUser.uid);
-
-    await setDoc(
-      userRef,
-      {
-        name: fbUser.displayName || "Usuario Google",
-        email: fbUser.email || "",
-        subscription: "Free",
-        lastLogin: new Date().toISOString(),
-        photoURL: fbUser.photoURL,
-      },
-      { merge: true }
-    );
-
-    await notifyAuthenticated(fbUser);
-
-  } catch {
-    setAuthError("No se pudo iniciar sesion con Google");
-  } finally {
-    setAuthLoading(false);
-  }
-
-}, [notifyAuthenticated]);
+  }, [notifyAuthenticated]);
 
   const logout = async () => {
     try {
+      if (!auth) return;
       await signOut(auth);
       if (typeof window !== "undefined") {
         localStorage.removeItem("kv_user_email");
