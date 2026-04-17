@@ -33,7 +33,7 @@ export function AuthGate({ onAuthenticated }: Props) {
     name.trim().length > 0 && password.trim().length >= 8;
 
   const inputClass =
-    "w-full rounded-[18px] border border-slate-200/50 bg-white/40 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-200 transition-colors focus:border-emerald-400 focus:outline-none backdrop-blur-sm";
+    "w-full rounded-[18px] border border-slate-200/50 bg-white/40 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 transition-colors focus:border-emerald-400 focus:outline-none backdrop-blur-sm";
   const primaryButtonClass =
     "w-full rounded-[18px] bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(16,185,129,0.35)] transition duration-200 hover:bg-emerald-600";
   const secondaryButtonClass =
@@ -179,29 +179,26 @@ export function AuthGate({ onAuthenticated }: Props) {
             className="absolute inset-0 bg-cover bg-center opacity-140"
             style={{
               backgroundImage:
-                "url('images/fondo.png')",
+                "url('images/3.jpg')",
               filter: "grayscale(10%) contrast(110%)",
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/20 via-emerald-800/10 to-transparent" />
         </div>
-        <div className="relative z-10 w-full max-w-[520px] lg:max-w-[620px] min-h-[620px] overflow-hidden rounded-[40px] bg-white/20 shadow-[0_35px_120px_rgba(2,6,23,0.55)] backdrop-blur-[42px] backdrop-saturate-150 text-slate-50">
+        <div className="relative z-10 w-full max-w-[520px] lg:max-w-[620px] min-h-[620px] overflow-hidden rounded-[40px] bg-white/20 shadow-[0_35px_120px_rgba(2,6,23,0.55)] backdrop-blur-[42px] backdrop-saturate-150 text-slate-900">
           <div className="grid grid-cols-1">
-            <div className="px-10 py-14 lg:px-14 lg:py-20 space-y-8">
-              <div className="space-y-3">
-                <span className="text-xs font-black uppercase tracking-[0.5em] text-emerald-300">
-                  Kinedrik
-                </span>
-                <h1 className="text-3xl font-bold text-slate-50">
+            <div className="px-10 py-14 lg:px-14 lg:py-20 space-y-10">
+              <div className="space-y-4">
+                <h1 className="text-3xl font-bold text-slate-900">
                   Bienvenido de nuevo
                 </h1>
-                <p className="text-sm text-slate-200">
+                <p className="text-sm text-slate-700">
                   Inicia sesión y tendrás acceso completo a AECO IA
                 </p>
               </div>
               <button
                 type="button"
-                className={`${googleButtonClass} ${!providerReady.google || authLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
+                className={`${googleButtonClass} mt-3 ${!providerReady.google || authLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
                 onClick={signInWithGoogle}
                 disabled={!providerReady.google || authLoading}
               >
@@ -226,16 +223,16 @@ export function AuthGate({ onAuthenticated }: Props) {
                 Continuar como Google
               </button>
 
-              <div className="flex items-center opacity-80">
+              <div className="flex items-center opacity-80 mt-3">
                 <div className="flex-1 h-px bg-slate-300" aria-hidden />
-                <span className="px-4 text-[11px] font-semibold uppercase tracking-[0.5em] text-slate-200">
+                <span className="px-4 text-[11px] font-semibold uppercase tracking-[0.5em] text-slate-700">
                   o
                 </span>
                 <div className="flex-1 h-px bg-slate-300" aria-hidden />
               </div>
 
               {step === "email" && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <input
                     placeholder="Correo electrónico"
                     className={inputClass}
@@ -256,7 +253,7 @@ export function AuthGate({ onAuthenticated }: Props) {
               )}
 
               {step === "code" && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <input
                     placeholder="Ingresa el código de 6 dígitos"
                     className={inputClass}
@@ -290,7 +287,7 @@ export function AuthGate({ onAuthenticated }: Props) {
               )}
 
               {step === "register" && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <input
                     placeholder="Nombre completo"
                     className={inputClass}
@@ -323,10 +320,10 @@ export function AuthGate({ onAuthenticated }: Props) {
                 <div className="text-xs text-rose-500 text-center">{emailFlowError}</div>
               )}
               {emailFlowMessage && (
-                <div className="text-xs text-slate-500 text-center">{emailFlowMessage}</div>
+                <div className="text-xs text-slate-700 text-center">{emailFlowMessage}</div>
               )}
 
-              <div className="text-[11px] text-center uppercase tracking-[0.35em] text-slate-200">
+              <div className="text-[11px] text-center uppercase tracking-[0.35em] text-slate-600">
                 Al continuar, aceptas nuestros términos y política de privacidad
               </div>
             </div>

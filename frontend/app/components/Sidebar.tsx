@@ -134,13 +134,14 @@ export function Sidebar({
             <span className="text-[14.5px] font-bold tracking-tight">Historial</span>
           </div>
 
-          <div 
+          <Link
+            href="/analitica"
             className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
             style={{ color: "var(--kv-subtext)" }}
           >
             <BarChart3 size={22} className="opacity-40 group-hover:opacity-100 transition-opacity" />
             <span className="text-[14.5px] font-bold tracking-tight">Analítica AEC</span>
-          </div>
+          </Link>
 
         </div>
       </nav>
