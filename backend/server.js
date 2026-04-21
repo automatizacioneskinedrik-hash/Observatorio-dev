@@ -671,6 +671,11 @@ app.post("/chat", async (req, res) => {
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const normalizedMessage = String(message).trim();
+    const isGreeting =
+      /^(hola|buenas|buenos dias|buen dia|buenas tardes|buenas noches|hey|hello)\b/i.test(
+        normalizedMessage
+      );
 
     const r = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
@@ -678,9 +683,11 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content:
-            "Eres AECO IA. Responde breve, claro y en espanol. Presentate como AECO IA, una IA conversacional, pero solo en el primer sal",
+            isGreeting
+              ? 'Eres AECO IA. Si el usuario saluda, responde una sola vez con: "Hola, soy AECO IA, una IA conversacional." y luego continua con una respuesta breve, clara y en espanol. No repitas esa presentacion en mensajes que no sean saludo.'
+              : "Eres AECO IA. Responde breve, claro y en espanol. No te presentes ni repitas que eres una IA conversacional. Responde directo a lo que el usuario pregunta.",
         },
-        { role: "user", content: message.trim() },
+        { role: "user", content: normalizedMessage },
       ],
     });
   
