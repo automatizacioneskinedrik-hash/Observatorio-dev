@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Chat from "./components/Chat";
 import { Sidebar } from "./components/Sidebar";
+import { ConversationsSidebar } from "./components/ConversationsSidebar";
 import { AuthGate } from "./components/auth/AuthGate";
 import { InfoModal } from "./components/InfoModal";
 import { useChatConversations } from "./hooks/useChatConversations";
@@ -16,6 +17,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const handleAuthSuccess = useCallback((nextUser: User) => {
     setUser(nextUser);
@@ -25,16 +27,23 @@ export default function Home() {
   
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
+  const chatStorageKey = user?.email
+    ? `kv_chat_conversations:${user.email.toLowerCase()}`
+    : "kv_chat_conversations:guest";
   
   const {
+    conversations,
+    activeConvId,
     messages,
     input,
     loading,
     setInput,
+    setActiveConvId,
     onNewConversation,
+    onRenameConversation,
     send,
     onEditUserMessage,
-  } = useChatConversations({ apiBase: API_BASE });
+  } = useChatConversations({ apiBase: API_BASE, storageKey: chatStorageKey });
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -61,7 +70,13 @@ export default function Home() {
         user={user}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
-        onNewConversation={onNewConversation}
+        onNewConversation={() => {
+          onNewConversation();
+          setHistoryOpen(false);
+        }}
+        onHistoryClick={() => setHistoryOpen((prev) => !prev)}
+        onCurrentChatClick={() => setHistoryOpen(false)}
+        historyOpen={historyOpen}
         onUserClick={() => setAuthOpen(true)}
       />
 
@@ -112,17 +127,39 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Chat Stream Section */}
-        <Chat
-          messages={messages}
-          bottomRef={bottomRef}
-          input={input}
-          setInput={setInput}
-          send={send}
-          loading={loading}
-          onEditUserMessage={onEditUserMessage}
-          userPhoto={user.photoURL}
-        />
+        <div className="flex min-h-0 flex-1">
+          {historyOpen && (
+            <div className="border-r border-slate-100 bg-slate-50/60">
+              <ConversationsSidebar
+                conversations={conversations}
+                activeId={activeConvId}
+                onNew={() => {
+                  onNewConversation();
+                  setHistoryOpen(false);
+                }}
+                onSelect={(id) => {
+                  setActiveConvId(id);
+                  setHistoryOpen(false);
+                }}
+                onRename={onRenameConversation}
+              />
+            </div>
+          )}
+
+          {/* Chat Stream Section */}
+          <div className="min-w-0 flex-1">
+            <Chat
+              messages={messages}
+              bottomRef={bottomRef}
+              input={input}
+              setInput={setInput}
+              send={send}
+              loading={loading}
+              onEditUserMessage={onEditUserMessage}
+              userPhoto={user.photoURL}
+            />
+          </div>
+        </div>
       </main>
 
       <style jsx global>{`

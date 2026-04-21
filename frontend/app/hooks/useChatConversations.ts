@@ -7,6 +7,7 @@ import type { Conversation } from "../types/conversation";
 
 type UseChatConversationsParams = {
   apiBase: string;
+  storageKey?: string;
 };
 
 type UseChatConversationsResult = {
@@ -25,6 +26,7 @@ type UseChatConversationsResult = {
 
 export function useChatConversations({
   apiBase,
+  storageKey = "kv_chat_conversations",
 }: UseChatConversationsParams): UseChatConversationsResult {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvIdState] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export function useChatConversations({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const typingTimers = useRef<Record<string, number>>({});
+  const hydratedRef = useRef(false);
 
   const clearTypingTimer = (messageId: string) => {
     const timerId = typingTimers.current[messageId];
@@ -51,6 +54,56 @@ export function useChatConversations({
       clearAllTypingTimers();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    hydratedRef.current = false;
+
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        setConversations([]);
+        setActiveConvIdState(null);
+        setDraftMessages([]);
+        hydratedRef.current = true;
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as {
+        conversations?: Conversation[];
+        activeConvId?: string | null;
+      };
+
+      const nextConversations = Array.isArray(parsed?.conversations) ? parsed.conversations : [];
+      const nextActiveId =
+        typeof parsed?.activeConvId === "string" || parsed?.activeConvId === null
+          ? parsed.activeConvId
+          : null;
+
+      setConversations(nextConversations);
+      setActiveConvIdState(nextActiveId);
+      setDraftMessages([]);
+    } catch {
+      setConversations([]);
+      setActiveConvIdState(null);
+      setDraftMessages([]);
+    } finally {
+      hydratedRef.current = true;
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hydratedRef.current) return;
+
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        conversations,
+        activeConvId,
+      })
+    );
+  }, [activeConvId, conversations, storageKey]);
 
   const activeConv = useMemo(
     () => conversations.find((c) => c.id === activeConvId) ?? null,

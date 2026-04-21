@@ -24,6 +24,9 @@ type Props = {
   user: User | null;
   onUserClick?: () => void;
   onNewConversation: () => void;
+  onHistoryClick: () => void;
+  onCurrentChatClick: () => void;
+  historyOpen: boolean;
 };
 
 const getUserInitials = (name?: string | null) => {
@@ -40,6 +43,9 @@ export function Sidebar({
   setMenuOpen,
   onNewConversation,
   onUserClick,
+  onHistoryClick,
+  onCurrentChatClick,
+  historyOpen,
 }: Props) {
   const initials = getUserInitials(user?.name);
 
@@ -118,21 +124,28 @@ export function Sidebar({
           </button>
 
           {/* Active Link (Card style) */}
-          <div 
+          <button
+            type="button"
+            onClick={onCurrentChatClick}
             className="rounded-2xl shadow-sm border flex items-center gap-4 px-4 py-3.5 cursor-pointer group hover:shadow-md transition-all"
             style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
           >
             <MessageCircle size={22} className="text-[var(--kv-brand-accent)]" />
             <span className="text-[14.5px] font-black tracking-tight" style={{ color: "var(--kv-brand-accent)" }}>Chat Actual</span>
-          </div>
+          </button>
 
-          <div 
+          <button
+            type="button"
+            onClick={onHistoryClick}
             className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
-            style={{ color: "var(--kv-subtext)" }}
+            style={{
+              color: historyOpen ? "var(--kv-brand-accent)" : "var(--kv-subtext)",
+              backgroundColor: historyOpen ? "var(--kv-panel)" : "transparent",
+            }}
           >
             <History size={22} className="opacity-40 group-hover:opacity-100 transition-opacity" />
             <span className="text-[14.5px] font-bold tracking-tight">Historial</span>
-          </div>
+          </button>
 
           <Link
             href="/analitica"
