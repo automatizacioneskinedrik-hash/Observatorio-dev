@@ -19,6 +19,8 @@ import {
   Video,
 } from "lucide-react";
 
+import AnaliticaCountryFilter from "../components/analitica/AnaliticaCountryFilter";
+
 export const metadata: Metadata = {
   title: "Analitica AEC | Observatorio AEC",
   description: "Vista de analitica AEC en modo claro",
@@ -396,50 +398,7 @@ export default function AnaliticaAECPage() {
               </section>
 
               <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                <article className="rounded-[32px] border border-white/80 bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">Cobertura</p>
-                      <h2 className="text-xl font-black tracking-tight text-slate-900">Analisis mundial por pais</h2>
-                    </div>
-                    <div className="rounded-full bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">
-                      Mapa
-                    </div>
-                  </div>
-
-                  <div className="mt-5 overflow-hidden rounded-[28px] border border-slate-200">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          {["Empresa", "Pais", "Señal", "Estado"].map((header) => (
-                            <th
-                              key={header}
-                              className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"
-                            >
-                              {header}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {companies.map((company) => (
-                          <tr key={company.name} className="transition hover:bg-emerald-50/40">
-                            <td className="px-4 py-4">
-                              <p className="font-bold text-slate-900">{company.name}</p>
-                            </td>
-                            <td className="px-4 py-4 text-sm text-slate-600">{company.country}</td>
-                            <td className="px-4 py-4 text-sm text-slate-600">{company.signal}</td>
-                            <td className="px-4 py-4">
-                              <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
-                                {company.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </article>
+                <AnaliticaCountryFilter companies={companies} />
 
                 <article className="rounded-[32px] border border-white/80 bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
                   <div className="flex items-center justify-between gap-3">
