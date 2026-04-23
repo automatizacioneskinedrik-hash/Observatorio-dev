@@ -3,10 +3,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// --- Constantes fuera del componente ---
 const waveformHeights = [16, 22, 18, 28, 20, 26, 12, 18, 24, 16, 22];
-const speechThreshold = 0.006;
-const silenceDelayMs = 2000;
+
+const formatDuration = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "00:00";
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
+
+const getSupportedAudioMimeType = () => {
+  if (typeof MediaRecorder === "undefined") return "";
+
+  const audio = typeof Audio !== "undefined" ? new Audio() : null;
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+  ];
+
+  return (
+    candidates.find((type) => {
+      if (!MediaRecorder.isTypeSupported(type)) return false;
+      if (!audio) return true;
+      return audio.canPlayType(type) !== "";
+    }) ?? ""
+  );
+};
 
 const questionsData = [
   { id: 1, text: "Pregunta 1...", video: "/assets/avatar/pregunta_1.mp4" },
@@ -31,92 +54,191 @@ const AudioBars = ({ heights }: { heights: number[] }) => (
   </div>
 );
 
+const RecordedAudioPlayer = ({ src }: { src: string }) => {
+  const playbackRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlayback = useCallback(() => {
+    const audio = playbackRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      void audio.play().catch(() => {
+        setIsPlaying(false);
+      });
+      return;
+    }
+
+    audio.pause();
+    audio.currentTime = 0;
+  }, []);
+
+  useEffect(() => {
+    const audio = new Audio(src);
+    audio.preload = "metadata";
+    playbackRef.current = audio;
+
+    const handleEnded = () => setIsPlaying(false);
+    const handlePause = () => setIsPlaying(false);
+    const handlePlay = () => setIsPlaying(true);
+    const handleLoadedMetadata = () => setDuration(audio.duration ?? 0);
+
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      playbackRef.current = null;
+    };
+  }, [src]);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={togglePlayback}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          togglePlayback();
+        }
+      }}
+      className="flex w-full max-w-[320px] items-center gap-3 rounded-full border border-emerald-200 bg-white px-3 py-2 shadow-sm transition-colors hover:border-emerald-300"
+      aria-label="Reproducir respuesta grabada"
+    >
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          togglePlayback();
+        }}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-700 text-white transition-colors hover:bg-emerald-800"
+        aria-label={isPlaying ? "Detener respuesta grabada" : "Reproducir respuesta grabada"}
+      >
+        {isPlaying ? (
+          <span className="flex gap-1">
+            <span className="h-3.5 w-1 rounded-sm bg-white" />
+            <span className="h-3.5 w-1 rounded-sm bg-white" />
+          </span>
+        ) : (
+          <span className="ml-0.5 h-0 w-0 border-y-[6px] border-l-[10px] border-y-transparent border-l-white" />
+        )}
+      </button>
+      <div className="flex flex-1 items-center gap-1">
+        {Array.from({ length: 24 }).map((_, index) => (
+          <span
+            key={index}
+            className="w-1 rounded-full bg-emerald-600"
+            style={{ height: `${7 + ((index * 5) % 14)}px` }}
+          />
+        ))}
+      </div>
+      <span className="shrink-0 text-xs font-semibold text-emerald-700">
+        {formatDuration(duration)}
+      </span>
+    </div>
+  );
+};
+
 export default function EvaluacionPage() {
   const router = useRouter();
-
-  // --- Estados de la Entrevista y Avatar ---
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isAvatarTalking, setIsAvatarTalking] = useState(false);
   const avatarVideoRef = useRef<HTMLVideoElement>(null);
-
-  // --- Refs para Audio y Detección de Silencio ---
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const animationFrameRef = useRef<number | null>(null);
-  const hasDetectedSpeechRef = useRef(false);
+  const recordedAudioByStepRef = useRef<Record<number, string>>({});
 
-  // --- Estados de Grabación Originales ---
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isAvatarTalking, setIsAvatarTalking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [, setRecordingError] = useState<string | null>(null);
   const [waveHeights, setWaveHeights] = useState<number[]>(() => [...waveformHeights]);
-  const [hasDetectedSpeech, setHasDetectedSpeech] = useState(false);
+  const [recordedAudioByStep, setRecordedAudioByStep] = useState<Record<number, string>>({});
   const [answerReady, setAnswerReady] = useState(false);
+
   const isLastStep = currentStep === questionsData.length - 1;
 
-  // --- Funciones de Control de Flujo ---
-  
-  const cleanupMicrophone = useCallback((resetAnswer = true) => {
+  const cleanupAudioProcessing = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      void audioContextRef.current.close();
       audioContextRef.current = null;
     }
     analyserRef.current = null;
-    hasDetectedSpeechRef.current = false;
-    if (resetAnswer) {
-      setHasDetectedSpeech(false);
-      setAnswerReady(false);
-    }
   }, []);
 
-  const stopMicrophone = useCallback((resetAnswer = true) => {
-    cleanupMicrophone(resetAnswer);
+  const stopMicrophone = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+
+    cleanupAudioProcessing();
+    mediaRecorderRef.current = null;
     setIsRecording(false);
-  }, [cleanupMicrophone]);
+    setWaveHeights([...waveformHeights]);
+  }, [cleanupAudioProcessing]);
 
-  const handleNextStep = useCallback(() => {
-    const video = avatarVideoRef.current;
-
-    stopMicrophone();
-
-    if (video) {
-      video.pause();
-      video.currentTime = 0;
-    }
-
-    if (currentStep < questionsData.length - 1) {
-      setCurrentStep(prev => prev + 1);
-      setIsAvatarTalking(true);
-      setAnswerReady(false);
-      setHasDetectedSpeech(false);
-    } else {
-      router.replace("/");
-    }
-  }, [currentStep, router, stopMicrophone]);
-
-  const startSilenceDetection = useCallback(async () => {
-    if (streamRef.current || isRecording || isAvatarTalking || answerReady) return;
+  const startRecording = useCallback(async () => {
+    if (isAvatarTalking || isRecording) return;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      setIsRecording(true); // Para activar la UI de "grabando"
-      hasDetectedSpeechRef.current = false;
-      setHasDetectedSpeech(false);
-      
+      audioChunksRef.current = [];
+      setIsRecording(true);
+      setAnswerReady(false);
+
+      const mimeType = getSupportedAudioMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      });
+
+      recorder.addEventListener("stop", () => {
+        if (!audioChunksRef.current.length) return;
+
+        const blob = new Blob(audioChunksRef.current, {
+          type: recorder.mimeType || mimeType || "audio/webm",
+        });
+        const url = URL.createObjectURL(blob);
+
+        setRecordedAudioByStep((prev) => {
+          const previousUrl = prev[currentStep];
+          if (previousUrl) URL.revokeObjectURL(previousUrl);
+          const next = { ...prev, [currentStep]: url };
+          recordedAudioByStepRef.current = next;
+          return next;
+        });
+
+        setAnswerReady(true);
+      });
+
+      recorder.start();
+
       const AudioCtx =
         window.AudioContext ||
         (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -128,56 +250,24 @@ export default function EvaluacionPage() {
       const audioContext = new AudioCtx();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.85;
+      analyser.fftSize = 256;
       source.connect(analyser);
-      
+
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
 
-      const bufferLength = analyser.fftSize;
+      const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
       const checkVolume = () => {
         if (!analyserRef.current) return;
-        analyserRef.current.getByteTimeDomainData(dataArray);
+
+        analyserRef.current.getByteFrequencyData(dataArray);
         let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          const normalized = (dataArray[i] - 128) / 128;
-          sum += normalized * normalized;
-        }
-        const volume = Math.sqrt(sum / bufferLength);
+        for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+        const average = sum / bufferLength;
 
-        const baseHeight = Math.max(12, Math.min(64, volume * 900));
-
-        // Actualizar barras visuales con el micro real
-        setWaveHeights(prev =>
-          prev.map((_, index) => {
-            const spread = 0.55 + ((index % 5) * 0.15);
-            const pulse = hasDetectedSpeechRef.current ? Math.sin(Date.now() / 90 + index) * 6 : 0;
-            return Math.max(10, baseHeight * spread + pulse);
-          })
-        );
-
-        if (volume >= speechThreshold) {
-          hasDetectedSpeechRef.current = true;
-          setHasDetectedSpeech(true);
-        }
-
-        if (hasDetectedSpeechRef.current && volume < speechThreshold) { // Umbral de silencio
-          if (!silenceTimerRef.current) {
-            silenceTimerRef.current = setTimeout(() => {
-              stopMicrophone(false);
-              setAnswerReady(true);
-              silenceTimerRef.current = null;
-            }, silenceDelayMs);
-          }
-        } else {
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-            silenceTimerRef.current = null;
-          }
-        }
+        setWaveHeights((prev) => prev.map(() => Math.max(10, average * 1.5)));
 
         if (streamRef.current) {
           animationFrameRef.current = requestAnimationFrame(checkVolume);
@@ -187,37 +277,54 @@ export default function EvaluacionPage() {
       checkVolume();
     } catch {
       setRecordingError("No se pudo acceder al microfono.");
+      cleanupAudioProcessing();
+      setIsRecording(false);
     }
-  }, [answerReady, isAvatarTalking, isRecording, stopMicrophone]);
+  }, [cleanupAudioProcessing, currentStep, isAvatarTalking, isRecording]);
 
   const handleResponseToggle = useCallback(() => {
     if (isAvatarTalking) return;
 
     if (isRecording) {
-      stopMicrophone(false);
-      setAnswerReady(true);
+      stopMicrophone();
       return;
     }
 
-    if (answerReady) {
-      setAnswerReady(false);
-      setHasDetectedSpeech(false);
+    void startRecording();
+  }, [isAvatarTalking, isRecording, startRecording, stopMicrophone]);
+
+  const handleNextStep = useCallback(() => {
+    if (!answerReady && !isLastStep) return;
+
+    stopMicrophone();
+    setWaveHeights([...waveformHeights]);
+
+    if (currentStep < questionsData.length - 1) {
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      setAnswerReady(Boolean(recordedAudioByStepRef.current[nextStep]));
+      setIsAvatarTalking(true);
+      return;
     }
 
-    void startSilenceDetection();
-  }, [answerReady, isAvatarTalking, isRecording, startSilenceDetection, stopMicrophone]);
+    router.replace("/");
+  }, [answerReady, currentStep, isLastStep, router, stopMicrophone]);
 
-  // --- Efectos ---
   useEffect(() => {
-    // Primera pregunta
     const initTimer = setTimeout(() => {
       setIsAvatarTalking(true);
     }, 1500);
+
     return () => {
       clearTimeout(initTimer);
-      cleanupMicrophone();
+      stopMicrophone();
+      Object.values(recordedAudioByStepRef.current).forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [cleanupMicrophone]);
+  }, [stopMicrophone]);
+
+  useEffect(() => {
+    setAnswerReady(Boolean(recordedAudioByStep[currentStep]));
+  }, [currentStep, recordedAudioByStep]);
 
   useEffect(() => {
     const video = avatarVideoRef.current;
@@ -226,105 +333,90 @@ export default function EvaluacionPage() {
     if (isAvatarTalking) {
       video.pause();
       video.currentTime = 0;
-      video.load();
-      video.play().catch(() => {
+      void video.play().catch(() => {
         setIsAvatarTalking(false);
       });
-    } else {
-      video.pause();
+      return;
     }
+
+    video.pause();
   }, [currentStep, isAvatarTalking]);
 
   return (
     <div className={`min-h-screen bg-gradient-to-b from-white via-emerald-50/60 to-emerald-100 relative overflow-hidden ${isRecording ? "recording-shimmer" : ""}`}>
-      {/* Header y resto de UI... (Mantener igual) */}
-      
       <main className="mx-auto max-w-[1140px] px-3 py-4 space-y-6">
-        
-        {/* SECCIÓN DEL AVATAR (Reemplaza la imagen estática) */}
         <section className="flex justify-center">
           <div className="w-full max-w-[900px] rounded-[34px] bg-slate-900 p-1 shadow-2xl relative overflow-hidden aspect-video min-h-[280px] md:min-h-[420px]">
-            
-            {/* Video de la Pregunta */}
             <video
               ref={avatarVideoRef}
               src={questionsData[currentStep]?.video}
-              preload="auto"
               playsInline
+              preload="auto"
               onEnded={() => {
                 setIsAvatarTalking(false);
               }}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
-                isAvatarTalking ? 'opacity-100' : 'opacity-0'
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
+                isAvatarTalking ? "opacity-100" : "opacity-0"
               }`}
             />
 
             <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-[10px] text-white">
-              <span className={`h-2 w-2 rounded-full ${isAvatarTalking ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
+              <span className={`h-2 w-2 rounded-full ${isAvatarTalking ? "bg-emerald-500 animate-pulse" : "bg-slate-500"}`} />
               {isAvatarTalking ? "AVATAR HABLANDO" : "TURNO DE RESPUESTA"}
             </div>
           </div>
         </section>
 
-        {/* SECCIÓN DE AUDIO BARS */}
-        <div className="mx-auto w-full max-w-[820px] bg-white/90 backdrop-blur-sm p-8 rounded-[32px] border border-emerald-100 shadow-xl">
-           <div className="text-center mb-4">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pregunta {currentStep + 1} de {questionsData.length}</p>
-              <h2 className="text-xl font-bold text-slate-800 mt-2">{questionsData[currentStep].text}</h2>
-           </div>
+        <div className="mx-auto w-full max-w-[820px] rounded-[32px] border border-emerald-100 bg-white/90 p-8 shadow-xl backdrop-blur-sm">
+          <div className="text-center mb-4">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Pregunta {currentStep + 1} de {questionsData.length}
+            </p>
+            <h2 className="text-xl font-bold text-slate-800 mt-2">
+              {questionsData[currentStep]?.text || "Finalizando entrevista..."}
+            </h2>
+          </div>
 
-           <div className="flex flex-col items-center gap-6">
-              <div className="w-full max-w-[280px] h-20 flex items-center justify-center">
-                <AudioBars heights={waveHeights} />
-              </div>
-              
-              <div className="text-sm text-slate-500 font-medium">
-                {isAvatarTalking
-                  ? "El avatar esta hablando..."
-                  : isRecording
-                    ? "Microfono activo. Responde la pregunta."
-                    : answerReady
-                      ? "Respuesta lista. Puedes continuar."
-                      : "Activa el microfono para responder."}
-              </div>
-              {isRecording && (
-                <p className="text-xs font-medium text-emerald-700">
-                  {hasDetectedSpeech ? "Respuesta detectada" : "Esperando tu voz"}
-                </p>
-              )}
-              <div className="flex w-full max-w-[420px] flex-col gap-3 sm:flex-row sm:justify-center">
-                <button
-                  type="button"
-                  onClick={handleResponseToggle}
-                  disabled={isAvatarTalking}
-                  className="rounded-lg bg-emerald-700 px-7 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300"
-                >
-                  {isRecording ? "Detener respuesta" : "Responder"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextStep}
-                  disabled={isAvatarTalking || (!answerReady && !isLastStep)}
-                  className="rounded-lg bg-slate-900 px-7 py-4 text-base font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {isLastStep ? "Volver al chat" : "Siguiente"}
-                </button>
-              </div>
-              {isLastStep && answerReady && (
-                <button
-                  type="button"
-                  onClick={() => router.replace("/")}
-                  className="text-base font-semibold text-emerald-700 transition-colors hover:text-emerald-800"
-                >
-                  Vuelve a AECO
-                </button>
-              )}
-           </div>
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex h-20 w-full max-w-[280px] items-center justify-center">
+              <AudioBars heights={waveHeights} />
+            </div>
+
+            <div className="text-sm font-medium text-slate-500">
+              {isAvatarTalking
+                ? "El avatar esta hablando..."
+                : isRecording
+                  ? "Microfono activo. Responde la pregunta."
+                  : answerReady
+                    ? "Respuesta guardada. Puedes continuar."
+                    : "Activa responder para grabar tu respuesta."}
+            </div>
+
+            {recordedAudioByStep[currentStep] && (
+              <RecordedAudioPlayer src={recordedAudioByStep[currentStep]} />
+            )}
+
+            <div className="flex w-full max-w-[420px] flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={handleResponseToggle}
+                disabled={isAvatarTalking}
+                className="rounded-lg bg-emerald-700 px-7 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
+                {isRecording ? "Detener respuesta" : "Responder"}
+              </button>
+              <button
+                type="button"
+                onClick={handleNextStep}
+                disabled={isAvatarTalking || (!answerReady && !isLastStep)}
+                className="rounded-lg bg-slate-900 px-7 py-4 text-base font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {isLastStep ? "Volver al chat" : "Siguiente"}
+              </button>
+            </div>
+          </div>
         </div>
-
       </main>
-
-      {/* Tus estilos globales... */}
     </div>
   );
 }
