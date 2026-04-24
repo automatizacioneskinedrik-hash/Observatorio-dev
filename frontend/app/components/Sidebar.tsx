@@ -7,14 +7,11 @@ import type { User } from "../types/user";
 import {
   BarChart3,
   Edit3,
-  FileText,
-  Globe2,
   History,
   Layers,
   MessageCircle,
   Mic2,
   Plus,
-  Search,
   User as UserIcon,
 } from "lucide-react";
 
@@ -27,6 +24,7 @@ type Props = {
   onHistoryClick: () => void;
   onCurrentChatClick: () => void;
   historyOpen: boolean;
+  onAdminPanelClick?: () => void;
 };
 
 const getUserInitials = (name?: string | null) => {
@@ -46,69 +44,83 @@ export function Sidebar({
   onHistoryClick,
   onCurrentChatClick,
   historyOpen,
+  onAdminPanelClick,
 }: Props) {
   const initials = getUserInitials(user?.name);
 
   if (!menuOpen) {
     return (
-      <aside 
-        className="w-[84px] h-screen flex flex-col items-center py-8 gap-10 transition-all duration-300 z-50 overflow-hidden bg-transparent"
-      >
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="cursor-pointer hover:scale-110 active:scale-95 transition-all"
-          style={{ color: "var(--kv-brand-accent)" }}
-          aria-label="Abrir menú"
-        >
-          <span className="text-[14px] font-black uppercase tracking-[0.3em]">IA</span>
-        </button>
-            <button
-              aria-label="Nueva conversación"
-              onClick={onNewConversation}
-              className="size-12 flex items-center justify-center rounded-xl shadow-lg cursor-pointer hover:opacity-90 active:scale-90 transition-all border border-white/10"
-              style={{ backgroundColor: "var(--kv-brand-accent)", color: "white" }}
-            >
-              <Plus size={20} />
-            </button>
-        <div className="mt-auto">
-          <button 
-            onClick={onUserClick}
-            className="size-12 rounded-full border-2 p-0.5 overflow-hidden shadow-sm cursor-pointer hover:ring-2 transition-all"
-            style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
+      <aside className="h-screen w-[84px] overflow-hidden bg-transparent">
+        <div className="flex h-full flex-col items-center gap-10 py-8">
+          <button
+            aria-label="Abrir menú"
+            className="cursor-pointer transition-all hover:scale-110 active:scale-95"
+            onClick={() => setMenuOpen(true)}
+            style={{ color: "var(--kv-brand-accent)" }}
+            type="button"
           >
-            {user?.photoURL ? (
-              <Image src={user.photoURL} alt={user.name || "User"} width={48} height={48} className="w-full h-full object-cover rounded-full" />
+            <span className="text-[14px] font-black uppercase tracking-[0.3em]">IA</span>
+          </button>
+
+          <button
+            aria-label="Nueva conversación"
+            className="flex size-12 cursor-pointer items-center justify-center rounded-xl border border-white/10 shadow-lg transition-all hover:opacity-90 active:scale-90"
+            onClick={onNewConversation}
+            style={{ backgroundColor: "var(--kv-brand-accent)", color: "white" }}
+            type="button"
+          >
+            <Plus size={20} />
+          </button>
+
+          <div className="mt-auto">
+            <button
+              className="size-12 overflow-hidden rounded-full border-2 p-0.5 shadow-sm transition-all hover:ring-2 cursor-pointer"
+              onClick={onUserClick}
+              style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
+              type="button"
+            >
+              {user?.photoURL ? (
+                <Image
+                  src={user.photoURL}
+                  alt={user.name || "User"}
+                  width={48}
+                  height={48}
+                  className="h-full w-full rounded-full object-cover"
+                />
               ) : (
-                <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "var(--kv-accent-bg)" }}>
+                <div
+                  className="flex h-full w-full items-center justify-center"
+                  style={{ backgroundColor: "var(--kv-accent-bg)" }}
+                >
                   <UserIcon size={20} className="text-[var(--kv-brand-accent)]" />
                 </div>
               )}
-          </button>
+            </button>
+          </div>
         </div>
       </aside>
     );
   }
 
   return (
-    <aside 
-      className="w-[310px] h-screen flex flex-col shrink-0 transition-all duration-300 relative z-20 overflow-hidden bg-transparent"
-    >
-      {/* Header */}
+    <aside className="relative z-20 flex h-screen w-[310px] shrink-0 flex-col overflow-hidden bg-transparent transition-all duration-300">
       <div className="p-8 pb-3">
         <div className="flex items-end gap-2">
-          <h1 className="text-[22px] font-black tracking-tight leading-none uppercase" style={{ color: "var(--kv-text)" }}>
+          <h1
+            className="text-[22px] font-black uppercase leading-none tracking-tight"
+            style={{ color: "var(--kv-text)" }}
+          >
             AECO
           </h1>
-          <span className="text-[22px] font-black uppercase text-emerald-600 tracking-tight leading-none">
+          <span className="text-[22px] font-black uppercase leading-none tracking-tight text-emerald-600">
             IA
           </span>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-6 overflow-y-auto scrollbar-hide">
-        <h2 
-          className="text-[11px] font-black uppercase tracking-[0.2em] px-3 mb-5 opacity-40"
+      <nav className="scrollbar-hide flex-1 overflow-y-auto px-6">
+        <h2
+          className="mb-5 px-3 text-[11px] font-black uppercase tracking-[0.2em] opacity-40"
           style={{ color: "var(--kv-subtext)" }}
         >
           NAVEGACIÓN
@@ -117,55 +129,64 @@ export function Sidebar({
           <button
             type="button"
             onClick={onNewConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl border border-emerald-800 bg-emerald-700 text-white shadow-sm active:scale-95 hover:shadow-lg"
+            className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-emerald-800 bg-emerald-700 px-4 py-3.5 text-white shadow-sm transition-all hover:shadow-lg active:scale-95"
           >
             <Edit3 size={18} />
             <span className="text-[14.5px] font-black tracking-tight">Nuevo Chat</span>
           </button>
 
-          {/* Active Link (Card style) */}
           <button
             type="button"
             onClick={onCurrentChatClick}
-            className="rounded-2xl shadow-sm border flex items-center gap-4 px-4 py-3.5 cursor-pointer group hover:shadow-md transition-all"
+            className="group flex items-center gap-4 rounded-2xl border px-4 py-3.5 text-left shadow-sm transition-all hover:shadow-md"
             style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
           >
             <MessageCircle size={22} className="text-[var(--kv-brand-accent)]" />
-            <span className="text-[14.5px] font-black tracking-tight" style={{ color: "var(--kv-brand-accent)" }}>Chat Actual</span>
+            <span
+              className="text-[14.5px] font-black tracking-tight"
+              style={{ color: "var(--kv-brand-accent)" }}
+            >
+              Chat Actual
+            </span>
           </button>
 
           <button
             type="button"
             onClick={onHistoryClick}
-            className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
+            className="group flex items-center gap-4 rounded-2xl px-4 py-3.5 transition-all hover:bg-white/50"
             style={{
               color: historyOpen ? "var(--kv-brand-accent)" : "var(--kv-subtext)",
               backgroundColor: historyOpen ? "var(--kv-panel)" : "transparent",
             }}
           >
-            <History size={22} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+            <History size={22} className="opacity-40 transition-opacity group-hover:opacity-100" />
             <span className="text-[14.5px] font-bold tracking-tight">Historial</span>
           </button>
 
           <Link
             href="/analitica"
-            className="flex items-center gap-4 px-4 py-3.5 transition-all cursor-pointer group rounded-2xl hover:bg-white/50"
+            className="group flex items-center gap-4 rounded-2xl px-4 py-3.5 transition-all hover:bg-white/50"
             style={{ color: "var(--kv-subtext)" }}
           >
-            <BarChart3 size={22} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+            <BarChart3 size={22} className="opacity-40 transition-opacity group-hover:opacity-100" />
             <span className="text-[14.5px] font-bold tracking-tight">Analítica AEC</span>
           </Link>
 
+          <button
+            type="button"
+            onClick={onAdminPanelClick}
+            className="group flex w-full items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-emerald-800 shadow-sm transition-all hover:bg-emerald-100/70 hover:shadow-md"
+          >
+            <Layers size={22} className="opacity-90 transition-opacity group-hover:opacity-100" />
+            <span className="text-[14.5px] font-bold tracking-tight">Panel de administración</span>
+          </button>
         </div>
       </nav>
 
-      {/* Acceso rápido a audio entrevista */}
       {menuOpen && (
         <div className="px-6 pt-6">
           <Link href="/evaluacion" className="block">
-            <div
-              className="flex items-center justify-center gap-3 rounded-[28px] border border-emerald-200 bg-white/80 p-3 text-[12px] font-black tracking-[0.2em] uppercase text-emerald-900 shadow-sm transition-all hover:shadow-lg"
-            >
+            <div className="flex items-center justify-center gap-3 rounded-[28px] border border-emerald-200 bg-white/80 p-3 text-[12px] font-black uppercase tracking-[0.2em] text-emerald-900 shadow-sm transition-all hover:shadow-lg">
               <Mic2 size={18} className="text-emerald-600" />
               Audio entrevista
             </div>
@@ -173,39 +194,50 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Footer Details */}
-          <div className="p-6 space-y-5 relative">
-          <div className="px-0 w-full">
-            <button
-              type="button"
-              onClick={onUserClick}
-              className="w-full flex items-center gap-4 cursor-pointer transition-all justify-start group/profile rounded-[32px] bg-white border border-slate-200 shadow-sm hover:shadow-lg focus-visible:outline focus-visible:outline-emerald-500 px-4 py-3"
+      <div className="relative p-6 space-y-5">
+        <div className="w-full px-0">
+          <button
+            type="button"
+            onClick={onUserClick}
+            className="group/profile flex w-full cursor-pointer items-center justify-start gap-4 rounded-[32px] border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:shadow-lg focus-visible:outline focus-visible:outline-emerald-500"
+          >
+            <div
+              className="size-13 shrink-0 overflow-hidden rounded-full border p-0.5 shadow-xl ring-4 ring-white transition-transform group-hover/profile:scale-105"
+              style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
             >
-              <div
-                className="size-13 rounded-full p-0.5 overflow-hidden shadow-xl border ring-4 ring-white shrink-0 transition-transform group-hover/profile:scale-105"
-                style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
-              >
-                {user?.photoURL ? (
-                  <Image src={user.photoURL} alt={user.name || "User"} width={52} height={52} className="w-full h-full object-cover rounded-full" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center font-bold" style={{ backgroundColor: "var(--kv-accent-bg)", color: "var(--kv-brand-accent)" }}>
-                    {initials}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col min-w-0 text-left">
-                <h4 className="text-[14px] font-semibold truncate tracking-tight leading-none mb-0.5" style={{ color: "var(--kv-text)" }}>
-                  {user?.name || "Invitado"}
-                </h4>
-                <p
-                  className="text-[10px] font-black uppercase tracking-[0.15em] opacity-60 truncate"
-                  style={{ color: "var(--kv-subtext)" }}
+              {user?.photoURL ? (
+                <Image
+                  src={user.photoURL}
+                  alt={user.name || "User"}
+                  width={52}
+                  height={52}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className="flex h-full w-full items-center justify-center font-bold"
+                  style={{ backgroundColor: "var(--kv-accent-bg)", color: "var(--kv-brand-accent)" }}
                 >
-                  {user?.subscription || "Plan Enterprise"}
-                </p>
-              </div>
-            </button>
-          </div>
+                  {initials}
+                </div>
+              )}
+            </div>
+            <div className="flex min-w-0 flex-col text-left">
+              <h4
+                className="mb-0.5 truncate text-[14px] font-semibold leading-none tracking-tight"
+                style={{ color: "var(--kv-text)" }}
+              >
+                {user?.name || "Invitado"}
+              </h4>
+              <p
+                className="truncate text-[10px] font-black uppercase tracking-[0.15em] opacity-60"
+                style={{ color: "var(--kv-subtext)" }}
+              >
+                {user?.subscription || "Plan Enterprise"}
+              </p>
+            </div>
+          </button>
+        </div>
       </div>
     </aside>
   );

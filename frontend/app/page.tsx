@@ -7,6 +7,7 @@ import { Sidebar } from "./components/Sidebar";
 import { ConversationsSidebar } from "./components/ConversationsSidebar";
 import { AuthGate } from "./components/auth/AuthGate";
 import { InfoModal } from "./components/InfoModal";
+import { AdminPanelModal } from "./components/AdminPanelModal";
 import { useChatConversations } from "./hooks/useChatConversations";
 import type { User } from "./types/user";
 import { useSocialAuth } from "./hooks/useSocialAuth";
@@ -16,6 +17,7 @@ export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -78,6 +80,7 @@ export default function Home() {
         onCurrentChatClick={() => setHistoryOpen(false)}
         historyOpen={historyOpen}
         onUserClick={() => setAuthOpen(true)}
+        onAdminPanelClick={() => setAdminOpen(true)}
       />
 
       {authOpen && (
@@ -102,6 +105,12 @@ export default function Home() {
           </p>
         </InfoModal>
       )}
+
+      <AdminPanelModal
+        open={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        googleId={user.email}
+      />
 
       {/* Main Experience Layout (Bubble Concept) */}
       <main className="flex-1 flex flex-col bg-white overflow-hidden relative shadow-[0_45px_120px_rgba(0,0,0,0.06)] z-10 transition-all duration-700 m-4 rounded-[42px] border border-white/40">

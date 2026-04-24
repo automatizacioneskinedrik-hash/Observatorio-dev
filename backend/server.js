@@ -1,5 +1,8 @@
 import "dotenv/config";
 import express from "express";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
 import cors from "cors";
 import OpenAI from "openai";
 import { OAuth2Client } from "google-auth-library";
@@ -10,6 +13,91 @@ import validator from "validator";
 import nodemailer from "nodemailer";
 
 const app = express();
+
+function applyAdminImportCors(res, origin) {
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
+}
+
+app.options("/admin/reuniones/import", (req, res) => {
+  applyAdminImportCors(res, req.headers.origin);
+  return res.sendStatus(204);
+});
+
+app.post("/admin/reuniones/import", express.json({ limit: "25mb" }), async (req, res) => {
+  try {
+    applyAdminImportCors(res, req.headers.origin);
+
+    const { filename, content, googleId } = req.body ?? {};
+
+    if (typeof filename !== "string" || !filename.trim()) {
+      return res.status(400).json({ error: "Se requiere el nombre del archivo." });
+    }
+
+    if (typeof content !== "string" || !content.trim()) {
+      return res.status(400).json({ error: "El archivo no contiene texto valido." });
+    }
+
+    const tableRef =
+      process.env.BQ_REUNIONES_TABLE_REF ||
+      process.env.BQ_MEETINGS_TABLE_REF ||
+      process.env.BQ_REUNIONES_TABLE ||
+      "observatorio_aec.reuniones";
+
+    const meetingId = normalizeMeetingFileName(filename);
+    const meetingDate = parseMeetingTimestamp(filename);
+    const transcript = content.replace(/\r\n/g, "\n").trim();
+
+    const bigQuery = await getAdminBigQueryClient();
+    const tableParts = tableRef.split(".").filter(Boolean);
+    const projectId = tableParts.length === 3 ? tableParts[0] : null;
+    const datasetId = tableParts.length === 3 ? tableParts[1] : tableParts[0];
+    const tableId = tableParts.length === 3 ? tableParts[2] : tableParts[1];
+
+    if (!datasetId || !tableId) {
+      return res.status(500).json({
+        error: "La referencia de la tabla BigQuery debe tener el formato dataset.tabla o proyecto.dataset.tabla.",
+      });
+    }
+
+    const table = projectId
+      ? bigQuery.dataset(datasetId, { projectId }).table(tableId)
+      : bigQuery.dataset(datasetId).table(tableId);
+
+    await table.insert([
+      {
+        fecha_hora: meetingDate,
+        resumen: "",
+        transcripcion: transcript,
+        conclusion: "",
+        google_id: typeof googleId === "string" && googleId.trim() ? googleId.trim() : "",
+        id_reunion: meetingId,
+      },
+    ]);
+
+    console.log("[admin/reuniones/import] Transcripcion guardada:", {
+      id_reunion: meetingId,
+      filename,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      received: true,
+      id_reunion: meetingId,
+      filename,
+      message: "Archivo recibido con exito.",
+    });
+  } catch (error) {
+    console.error("Error importando transcripcion de reunion:", error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "No se pudo guardar la transcripcion en BigQuery.",
+      details: error?.errors ?? error?.response?.data ?? null,
+    });
+  }
+});
+
 const googleClient = new OAuth2Client();
 
 const PORT = Number(process.env.PORT ?? 8080);
@@ -701,3 +789,46 @@ app.post("/chat", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Backend listo en http://0.0.0.0:${PORT}`);
 });
+
+// admin panel import hook
+const adminPath = require("path");
+
+let adminBigQueryClient = null;
+
+function getAdminBigQueryClient() {
+  if (adminBigQueryClient) return adminBigQueryClient;
+
+  try {
+    const { BigQuery } = require("@google-cloud/bigquery");
+    adminBigQueryClient = new BigQuery();
+    return adminBigQueryClient;
+  } catch (error) {
+    console.error("No se pudo cargar @google-cloud/bigquery para el panel de administración:", error);
+    return null;
+  }
+}
+
+function normalizeMeetingFileName(filename) {
+  const baseName = adminPath.basename(String(filename || "")).trim();
+  return baseName
+    .replace(/\.transcript\.vtt$/i, "")
+    .replace(/\.webvtt$/i, "")
+    .replace(/\.vtt$/i, "")
+    .replace(/\.txt$/i, "")
+    .replace(/\.srt$/i, "");
+}
+
+function parseMeetingTimestamp(filename) {
+  const match = String(filename || "").match(/GMT(\d{8})-(\d{6})/i);
+  if (!match) return new Date();
+
+  const [, datePart, timePart] = match;
+  const year = Number(datePart.slice(0, 4));
+  const month = Number(datePart.slice(4, 6)) - 1;
+  const day = Number(datePart.slice(6, 8));
+  const hour = Number(timePart.slice(0, 2));
+  const minute = Number(timePart.slice(2, 4));
+  const second = Number(timePart.slice(4, 6));
+
+  return new Date(Date.UTC(year, month, day, hour, minute, second));
+}
