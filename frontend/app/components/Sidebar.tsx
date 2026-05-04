@@ -25,6 +25,7 @@ type Props = {
   onCurrentChatClick: () => void;
   historyOpen: boolean;
   onAdminPanelClick?: () => void;
+  adminActive?: boolean;
 };
 
 const getUserInitials = (name?: string | null) => {
@@ -45,12 +46,13 @@ export function Sidebar({
   onCurrentChatClick,
   historyOpen,
   onAdminPanelClick,
+  adminActive,
 }: Props) {
   const initials = getUserInitials(user?.name);
 
   if (!menuOpen) {
     return (
-      <aside className="h-screen w-[84px] overflow-hidden bg-transparent">
+      <aside className="h-full w-[84px] overflow-hidden bg-transparent">
         <div className="flex h-full flex-col items-center gap-10 py-8">
           <button
             aria-label="Abrir menú"
@@ -103,7 +105,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="relative z-20 flex h-screen w-[310px] shrink-0 flex-col overflow-hidden bg-transparent transition-all duration-300">
+    <aside className="relative z-20 flex h-full w-[310px] shrink-0 flex-col overflow-hidden bg-transparent transition-all duration-300">
       <div className="p-8 pb-3">
         <div className="flex items-end gap-2">
           <h1
@@ -138,7 +140,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onCurrentChatClick}
-            className="group flex items-center gap-4 rounded-2xl border px-4 py-3.5 text-left shadow-sm transition-all hover:shadow-md"
+            className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3.5 text-left shadow-sm transition-all hover:shadow-md"
             style={{ backgroundColor: "var(--kv-panel)", borderColor: "var(--kv-accent-bg)" }}
           >
             <MessageCircle size={22} className="text-[var(--kv-brand-accent)]" />
@@ -153,7 +155,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onHistoryClick}
-            className="group flex items-center gap-4 rounded-2xl px-4 py-3.5 transition-all hover:bg-white/50"
+            className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 transition-all hover:bg-white/50"
             style={{
               color: historyOpen ? "var(--kv-brand-accent)" : "var(--kv-subtext)",
               backgroundColor: historyOpen ? "var(--kv-panel)" : "transparent",
@@ -165,7 +167,7 @@ export function Sidebar({
 
           <Link
             href="/analitica"
-            className="group flex items-center gap-4 rounded-2xl px-4 py-3.5 transition-all hover:bg-white/50"
+            className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 transition-all hover:bg-white/50"
             style={{ color: "var(--kv-subtext)" }}
           >
             <BarChart3 size={22} className="opacity-40 transition-opacity group-hover:opacity-100" />
@@ -175,7 +177,11 @@ export function Sidebar({
           <button
             type="button"
             onClick={onAdminPanelClick}
-            className="group flex w-full items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-emerald-800 shadow-sm transition-all hover:bg-emerald-100/70 hover:shadow-md"
+            className={`group flex w-full cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3.5 shadow-sm transition-all hover:shadow-md ${
+              adminActive
+                ? "border-emerald-300 bg-emerald-100/80 text-emerald-900"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100/70"
+            }`}
           >
             <Layers size={22} className="opacity-90 transition-opacity group-hover:opacity-100" />
             <span className="text-[14.5px] font-bold tracking-tight">Panel de administración</span>
@@ -186,7 +192,7 @@ export function Sidebar({
       {menuOpen && (
         <div className="px-6 pt-6">
           <Link href="/evaluacion" className="block">
-            <div className="flex items-center justify-center gap-3 rounded-[28px] border border-emerald-200 bg-white/80 p-3 text-[12px] font-black uppercase tracking-[0.2em] text-emerald-900 shadow-sm transition-all hover:shadow-lg">
+            <div className="flex cursor-pointer items-center justify-center gap-3 rounded-[28px] border border-emerald-200 bg-white/80 p-3 text-[12px] font-black uppercase tracking-[0.2em] text-emerald-900 shadow-sm transition-all hover:shadow-lg">
               <Mic2 size={18} className="text-emerald-600" />
               Audio entrevista
             </div>
@@ -194,7 +200,7 @@ export function Sidebar({
         </div>
       )}
 
-      <div className="relative p-6 space-y-5">
+      <div className="relative mt-auto p-6 space-y-5">
         <div className="w-full px-0">
           <button
             type="button"

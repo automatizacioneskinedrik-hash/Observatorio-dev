@@ -8,6 +8,7 @@ import type { Conversation } from "../types/conversation";
 type UseChatConversationsParams = {
   apiBase: string;
   storageKey?: string;
+  userEmail?: string | null;
 };
 
 type UseChatConversationsResult = {
@@ -27,6 +28,7 @@ type UseChatConversationsResult = {
 export function useChatConversations({
   apiBase,
   storageKey = "kv_chat_conversations",
+  userEmail = null,
 }: UseChatConversationsParams): UseChatConversationsResult {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvIdState] = useState<string | null>(null);
@@ -215,10 +217,20 @@ export function useChatConversations({
       const r = await fetch(`${apiBase}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message: text,
+          userEmail,
+        }),
       });
-      const data = await r.json();
-      typeAssistantText(convId, assistantMsgId, data.reply ?? "");
+
+      const data = await r.json().catch(() => null);
+      if (!r.ok) {
+        const errorMessage = data?.error ?? "No se pudo procesar el mensaje.";
+        replaceAssistantText(convId, assistantMsgId, errorMessage);
+        return;
+      }
+
+      typeAssistantText(convId, assistantMsgId, data?.reply ?? "");
     } catch {
       replaceAssistantText(convId, assistantMsgId, "Error conectando con el servidor");
     } finally {

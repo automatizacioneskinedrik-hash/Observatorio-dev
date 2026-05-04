@@ -184,7 +184,11 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
 
       await notifyAuthenticated(fbUser);
 
-    } catch {
+    } catch (error) {
+      if (auth?.currentUser) {
+        console.log("Ignorando error de popup porque el usuario ya está autenticado", error);
+        return;
+      }
       setAuthError("No se pudo iniciar sesion con Google");
     } finally {
       setAuthLoading(false);

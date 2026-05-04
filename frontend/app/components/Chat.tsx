@@ -37,10 +37,10 @@ export default function Chat({
   const showInitial = messages.length === 0 && !loading;
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {/* Messages Stream */}
-        <div className="flex-1 overflow-y-auto pt-10 pb-52 scrollbar-hide px-4">
-          <div className="max-w-[880px] mx-auto space-y-12 relative">
+        <div className={`flex-1 min-h-0 overflow-y-auto px-4 pt-10 scrollbar-hide ${showInitial ? "pb-16" : "pb-44"}`}>
+          <div className={`relative mx-auto max-w-[880px] ${showInitial ? "flex min-h-full flex-col items-center justify-center gap-6" : "space-y-12"}`}>
             {showInitial && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <span className="text-[50px] font-black tracking-[0.5em] text-slate-200/60 uppercase">
@@ -49,7 +49,7 @@ export default function Chat({
               </div>
             )}
           {showInitial ? (
-            <div className="flex flex-col items-center justify-center min-h-[40vh] text-center opacity-0 animate-in fade-in duration-1000">
+            <div className="relative z-10 flex flex-col items-center justify-center min-h-[40vh] text-center opacity-0 animate-in fade-in duration-1000">
               <div className="size-20 rounded-3xl bg-neutral-light/50 flex items-center justify-center mb-6 border border-emerald-900/5">
                 <Database size={44} className="text-emerald-900/10" />
               </div>
@@ -133,52 +133,50 @@ export default function Chat({
       </div>
 
       {/* Input Area (Integrated) */}
-      <div
-        className="absolute left-0 right-0 z-30 pointer-events-none px-4"
-        style={showInitial ? { top: "50%", transform: "translateY(10%)" } : { bottom: "32px" }}
-      >
-        <div className="max-w-[940px] mx-auto px-6 pointer-events-auto">
-          <div 
-            className="bg-white border rounded-[48px] p-4 shadow-[0_35px_100px_rgba(0,0,0,0.06)] transition-all relative group overflow-hidden" 
+      <div className="shrink-0 px-4 pb-8 pt-4">
+        <div className="mx-auto max-w-[940px]">
+          <div
+            className="group relative overflow-hidden rounded-[48px] border bg-white p-4 shadow-[0_35px_100px_rgba(0,0,0,0.06)] transition-all"
             style={{ borderColor: "var(--kv-accent-bg)" }}
           >
-             {/* Core Input Field (NO BORDER UNTIL FOCUS) */}
-             <div className="bg-emerald-50/10 rounded-[32px] relative z-10 transition-all group-focus-within:ring-4 group-focus-within:ring-emerald-500/10 group-focus-within:bg-white border-0 outline-none overflow-hidden">
-                <div className="flex items-stretch gap-3 px-2 py-3">
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        if (!loading && input.trim()) send();
-                      }
-                    }}
-                    className="flex-1 bg-transparent border-0 focus:ring-0 outline-none placeholder:text-slate-400 px-4 resize-y max-h-[180px] text-[16px] font-bold tracking-tight leading-relaxed placeholder:font-medium scrollbar-thumb-slate-300 scrollbar-track-transparent"
-                    style={{ color: "var(--kv-text)", border: 'none', outline: 'none', boxShadow: 'none', minHeight: '56px', overflowY: 'auto' }}
-                    placeholder="¿Qué quieres observar el día de hoy?"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => { if (!loading && input.trim()) send(); }}
-                    disabled={loading || !input.trim()}
-                    aria-label="Enviar mensaje"
-                    className={`size-14 rounded-[20px] flex items-center justify-center transition-all duration-500 shadow-sm active:scale-90 cursor-pointer ${
-                      !input.trim() 
-                        ? "opacity-60" 
-                        : "text-white shadow-xl scale-105"
-                    }`}
-                    style={{ 
-                       backgroundColor: input.trim() ? "var(--kv-brand-accent)" : "var(--kv-accent-bg)",
-                       color: input.trim() ? "white" : "var(--kv-brand-accent)",
-                       minWidth: "56px",
-                    }}
-                  >
-                    <Send size={24} />
-                    <span className="sr-only">Enviar mensaje</span>
-                  </button>
-                </div>
-             </div>
+            {/* Core Input Field (NO BORDER UNTIL FOCUS) */}
+            <div className="relative z-10 overflow-hidden rounded-[32px] border-0 bg-emerald-50/10 outline-none transition-all group-focus-within:bg-white group-focus-within:ring-4 group-focus-within:ring-emerald-500/10">
+              <div className="flex items-stretch gap-3 px-2 py-3">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!loading && input.trim()) send();
+                    }
+                  }}
+                  className="max-h-[180px] flex-1 resize-y bg-transparent px-4 text-[16px] font-bold leading-relaxed tracking-tight outline-none scrollbar-thumb-slate-300 scrollbar-track-transparent focus:ring-0"
+                  style={{ color: "var(--kv-text)", border: "none", boxShadow: "none", minHeight: "56px", overflowY: "auto" }}
+                  placeholder="¿Qué quieres observar el día de hoy?"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!loading && input.trim()) send();
+                  }}
+                  disabled={loading || !input.trim()}
+                  aria-label="Enviar mensaje"
+                  className={`flex size-14 min-w-[56px] items-center justify-center rounded-[20px] transition-all duration-500 active:scale-90 cursor-pointer ${
+                    !input.trim()
+                      ? "opacity-60"
+                      : "text-white shadow-xl scale-105"
+                  }`}
+                  style={{
+                    backgroundColor: input.trim() ? "var(--kv-brand-accent)" : "var(--kv-accent-bg)",
+                    color: input.trim() ? "white" : "var(--kv-brand-accent)",
+                  }}
+                >
+                  <Send size={24} />
+                  <span className="sr-only">Enviar mensaje</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,12 +1,19 @@
 "use client";
 
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { ArrowLeft, FileUp as UploadIcon, Sparkles as SparklesIcon, Users as UsersIcon } from "lucide-react";
+import { AdminsTab } from "./admin-panel/AdminsTab";
+import { LimitsTab } from "./admin-panel/LimitsTab";
+import { PanelTabsNav } from "./admin-panel/PanelTabsNav";
+import { StatusBanner } from "./admin-panel/StatusBanner";
+import { UploadsTab } from "./admin-panel/UploadsTab";
+import { useAdminPanelController } from "./admin-panel/useAdminPanelController";
 
-type AdminPanelModalProps = {
+export type AdminPanelModalProps = {
   open: boolean;
   onClose: () => void;
   apiBase?: string;
   googleId?: string | null;
+  mode?: "modal" | "page";
 };
 
 export function AdminPanelModal({
@@ -14,202 +21,171 @@ export function AdminPanelModal({
   onClose,
   apiBase = "",
   googleId,
+  mode = "modal",
 }: AdminPanelModalProps) {
-  const UPLOAD_TIMEOUT_MS = 120000;
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadStatus, setUploadStatus] = useState("");
-  const [uploadError, setUploadError] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const closeTimerRef = useRef<number | null>(null);
+  const isPageMode = mode === "page";
+  const admin = useAdminPanelController({ open, apiBase, googleId });
 
-  useEffect(() => {
-    if (!open) {
-      setSelectedFile(null);
-      setUploadStatus("");
-      setUploadError("");
-      setIsUploading(false);
-    }
+  const panelTabs = [
+    {
+      id: "uploads" as const,
+      label: "Transcripciones",
+      description: "Carga y análisis",
+      count: admin.selectedFile ? "1 listo" : "0",
+      icon: UploadIcon,
+      hint: "Subir archivo",
+    },
+    {
+      id: "admins" as const,
+      label: "Administradores",
+      description: "Usuarios Gmail",
+      count: admin.adminRecords.length > 0 ? `${admin.adminRecords.length} activos` : "0",
+      icon: UsersIcon,
+      hint: "Asignar acceso",
+    },
+    {
+      id: "limits" as const,
+      label: "Límites IA",
+      description: "Reglas de uso",
+      count: admin.interactionRules.length > 0 ? `${admin.interactionRules.length} reglas` : "0",
+      icon: SparklesIcon,
+      hint: "Control de uso",
+    },
+  ];
 
-    return () => {
-      if (closeTimerRef.current) {
-        window.clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = null;
-      }
-    };
-  }, [open]);
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    setSelectedFile(file);
-    setUploadError("");
-    setUploadStatus("");
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      setUploadError("Selecciona un archivo primero.");
-      return;
-    }
-
-    const uploadEndpoint = apiBase
-      ? `${apiBase.replace(/\/$/, "")}/admin/reuniones/import`
-      : "/api/admin/reuniones/import";
-
-    setIsUploading(true);
-    setUploadError("");
-    setUploadStatus("");
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-      const content = await selectedFile.text();
-
-      const response = await fetch(uploadEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          filename: selectedFile.name,
-          content,
-          googleId: googleId ?? null,
-        }),
-      });
-
-      window.clearTimeout(timeoutId);
-
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(payload?.error || "No se pudo guardar el archivo.");
-      }
-
-      setUploadStatus(payload?.message || "Archivo recibido con exito.");
-      closeTimerRef.current = window.setTimeout(() => {
-        onClose();
-      }, 1800);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        setUploadError("La subida tardo demasiado y se cancelo.");
-      } else {
-        setUploadError(error instanceof Error ? error.message : "Ocurrio un error inesperado.");
-      }
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  if (!open) {
+  if (!open && !isPageMode) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4 backdrop-blur-[6px]">
-      <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-[16px] border border-[#DDEADF] bg-white/96 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
-        <div className="flex items-start justify-between px-8 py-6">
+    <div
+      className={
+        isPageMode
+          ? "flex h-full min-h-0 flex-col overflow-hidden rounded-[0px] bg-transparent"
+          : "fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4 backdrop-blur-[6px]"
+      }
+    >
+      <div
+        className={
+          isPageMode
+            ? "flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[0px] border-0 bg-transparent shadow-none"
+            : "flex w-full max-w-2xl flex-col overflow-hidden rounded-[16px] border border-[#DDEADF] bg-white/96 shadow-[0_12px_30px_rgba(0,0,0,0.08)]"
+        }
+      >
+        <div className={`flex items-start justify-between ${isPageMode ? "px-6 py-5" : "px-8 py-6"}`}>
           <div>
             <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
               Panel de Administración
             </h2>
-            <p className="mt-1 text-[11px] uppercase tracking-[0.32em] text-on-surface-variant">
-              Cargar transcripciones
-            </p>
           </div>
 
-          <button
-            aria-label="Cerrar panel"
-            className="cursor-pointer text-on-surface-variant transition-colors hover:text-on-surface"
-            onClick={onClose}
-            type="button"
-          >
-            <span className="text-[22px] leading-none">×</span>
-          </button>
+          {isPageMode ? (
+            <button
+              aria-label="Volver al chat"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-50"
+              onClick={onClose}
+              type="button"
+            >
+              <ArrowLeft size={16} />
+              Volver al chat
+            </button>
+          ) : (
+            <button
+              aria-label="Cerrar panel"
+              className="cursor-pointer text-on-surface-variant transition-colors hover:text-on-surface"
+              onClick={onClose}
+              type="button"
+            >
+              <span className="text-[22px] leading-none">×</span>
+            </button>
+          )}
         </div>
 
-        <div className="max-h-[716px] overflow-y-auto px-8 pb-8 pt-2">
+        <div className={isPageMode ? "min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2" : "max-h-[716px] overflow-y-auto px-8 pb-8 pt-2"}>
           <div className="space-y-10">
-            <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold uppercase tracking-[0.3em] text-secondary">
-                  Cargar Transcripciones
-                </span>
-                <div className="h-px flex-1 bg-outline-variant/20" />
-              </div>
+            <PanelTabsNav tabs={panelTabs} activeTab={admin.activePanelTab} onSelectTab={admin.setActivePanelTab} />
 
-              <label className="block cursor-pointer rounded-[18px] border-2 border-dashed border-[#CBE5D8] bg-[#FBFCFB] p-8 text-center">
-                <div className="flex flex-col items-center justify-center">
-                  <div className="rounded-full bg-white px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary shadow-[0_4px_10px_rgba(15,61,46,0.04)]">
-                    Sube documentos, transcripciones o audios
-                  </div>
-                  <p className="mt-5 max-w-xl text-sm leading-6 text-on-surface-variant">
-                    Arrastra un archivo o haz clic para seleccionar. La transcripción completa se guardará
-                    en BigQuery.
-                  </p>
-                  <input
-                    accept=".txt,.vtt,.webvtt,text/plain,text/vtt"
-                    className="hidden"
-                    onChange={handleFileChange}
-                    type="file"
-                  />
-                  <span className="mt-6 inline-flex rounded-full border border-primary/20 bg-primary/10 px-5 py-2 text-sm font-semibold text-secondary transition-colors hover:bg-primary/15">
-                    Seleccionar archivos
-                  </span>
-                </div>
-              </label>
+            {admin.activePanelTab === "uploads" ? (
+              <UploadsTab
+                selectedFile={admin.selectedFile}
+                isUploading={admin.isUploading}
+                uploadError={admin.uploadError}
+                uploadStatus={admin.uploadStatus}
+                uploadStatusTone={admin.uploadStatusTone}
+                onFileChange={admin.handleFileChange}
+                onUpload={admin.handleUpload}
+              />
+            ) : null}
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-h-6 text-sm text-on-surface-variant">
-                  {selectedFile ? (
-                    <span className="font-medium text-on-surface">
-                      Archivo seleccionado: {selectedFile.name}
-                    </span>
-                  ) : (
-                    <span>No has seleccionado ningun archivo todavia.</span>
-                  )}
-                </div>
+            {admin.activePanelTab === "admins" ? (
+              <AdminsTab
+                adminSearch={admin.adminSearch}
+                selectedAdminEmail={admin.selectedAdminEmail}
+                adminCandidatesCount={admin.adminCandidates.length}
+                adminCandidatesLoading={admin.adminCandidatesLoading}
+                adminCandidatesError={admin.adminCandidatesError}
+                adminResultFilter={admin.adminResultFilter}
+                filteredAdminCandidates={admin.filteredAdminCandidates}
+                gmailCandidatesCount={admin.gmailCandidatesCount}
+                matchedCandidatesCount={admin.matchedCandidatesCount}
+                adminSearchTerm={admin.adminSearchTerm}
+                adminRecords={admin.adminRecords}
+                isAssigningAdmin={admin.isAssigningAdmin}
+                statusBanner={<StatusBanner tone={admin.adminStatusTone} text={admin.adminStatus} />}
+                onSearchChange={admin.onSearchChange}
+                onResultFilterChange={admin.onResultFilterChange}
+                onSelectCandidate={admin.onSelectCandidate}
+                onAssignAdmin={admin.handleAssignAdmin}
+                highlightMatch={admin.highlightMatch}
+              />
+            ) : null}
 
-                <button
-                  className="cursor-pointer rounded-full border border-primary/20 bg-white px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={!selectedFile || isUploading}
-                  onClick={handleUpload}
-                  type="button"
-                >
-                  {isUploading ? "Subiendo..." : "Subir archivo"}
-                </button>
-              </div>
-
-              {uploadError ? (
-                <div className="rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-sm text-error-container">
-                  {uploadError}
-                </div>
-              ) : null}
-
-              {uploadStatus ? (
-                <div className="rounded-xl border border-secondary/30 bg-secondary/15 px-4 py-3 text-sm font-semibold text-secondary">
-                  {uploadStatus}
-                </div>
-              ) : null}
-            </section>
+            {admin.activePanelTab === "limits" ? (
+              <LimitsTab
+                interactionLimitsEnabled={admin.interactionLimitsEnabled}
+                interactionScope={admin.interactionScope}
+                interactionTarget={admin.interactionTarget}
+                maxMessagesPerDay={admin.maxMessagesPerDay}
+                cooldownMinutes={admin.cooldownMinutes}
+                temporaryBlockHours={admin.temporaryBlockHours}
+                autoReply={admin.autoReply}
+                enforcementLevel={admin.enforcementLevel}
+                showAdvancedLimits={admin.showAdvancedLimits}
+                interactionRules={admin.interactionRules}
+                getScopeLabel={admin.getScopeLabel}
+                onToggleInteractionLimits={admin.onToggleInteractionLimits}
+                onInteractionScopeChange={admin.onInteractionScopeChange}
+                onInteractionTargetChange={admin.onInteractionTargetChange}
+                onMaxMessagesPerDayChange={admin.onMaxMessagesPerDayChange}
+                onCooldownMinutesChange={admin.onCooldownMinutesChange}
+                onTemporaryBlockHoursChange={admin.onTemporaryBlockHoursChange}
+                onAutoReplyChange={admin.onAutoReplyChange}
+                onEnforcementLevelChange={admin.onEnforcementLevelChange}
+                onToggleAdvancedLimits={admin.onToggleAdvancedLimits}
+                onAddInteractionRule={admin.handleAddInteractionRule}
+              />
+            ) : null}
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-4 bg-[#F8FBF9] px-8 py-6">
-          <button
-            className="cursor-pointer px-6 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
-            onClick={onClose}
-            type="button"
-          >
-            Cancelar
-          </button>
-          <button
-            className="cursor-pointer rounded-full bg-primary px-7 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#97cbb3]"
-            onClick={onClose}
-            type="button"
-          >
-            Cerrar
-          </button>
-        </div>
+        {!isPageMode ? (
+          <div className="flex items-center justify-end gap-4 bg-[#F8FBF9] px-8 py-6">
+            <button
+              className="cursor-pointer px-6 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
+              onClick={onClose}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="cursor-pointer rounded-full bg-primary px-7 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#97cbb3]"
+              onClick={onClose}
+              type="button"
+            >
+              Cerrar
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

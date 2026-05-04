@@ -17,7 +17,7 @@ export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [mainView, setMainView] = useState<"chat" | "admin">("chat");
   const [menuOpen, setMenuOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -45,7 +45,7 @@ export default function Home() {
     onRenameConversation,
     send,
     onEditUserMessage,
-  } = useChatConversations({ apiBase: API_BASE, storageKey: chatStorageKey });
+  } = useChatConversations({ apiBase: API_BASE, storageKey: chatStorageKey, userEmail: user?.email ?? null });
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,7 +63,7 @@ export default function Home() {
 
   return (
     <div 
-      className="flex h-screen overflow-hidden font-sans text-slate-900 relative transition-colors duration-500"
+      className="flex h-screen overflow-hidden p-4 gap-4 font-sans text-slate-900 relative transition-colors duration-500"
       style={{ backgroundColor: "var(--kv-bg)" }}
     >
       <div className="shimmer-bg pointer-events-none opacity-20 absolute inset-0 z-0" />
@@ -75,12 +75,23 @@ export default function Home() {
         onNewConversation={() => {
           onNewConversation();
           setHistoryOpen(false);
+          setMainView("chat");
         }}
-        onHistoryClick={() => setHistoryOpen((prev) => !prev)}
-        onCurrentChatClick={() => setHistoryOpen(false)}
+        onHistoryClick={() => {
+          setHistoryOpen((prev) => !prev);
+          setMainView("chat");
+        }}
+        onCurrentChatClick={() => {
+          setHistoryOpen(false);
+          setMainView("chat");
+        }}
         historyOpen={historyOpen}
         onUserClick={() => setAuthOpen(true)}
-        onAdminPanelClick={() => setAdminOpen(true)}
+        onAdminPanelClick={() => {
+          setHistoryOpen(false);
+          setMainView("admin");
+        }}
+        adminActive={mainView === "admin"}
       />
 
       {authOpen && (
@@ -106,14 +117,8 @@ export default function Home() {
         </InfoModal>
       )}
 
-      <AdminPanelModal
-        open={adminOpen}
-        onClose={() => setAdminOpen(false)}
-        googleId={user.email}
-      />
-
       {/* Main Experience Layout (Bubble Concept) */}
-      <main className="flex-1 flex flex-col bg-white overflow-hidden relative shadow-[0_45px_120px_rgba(0,0,0,0.06)] z-10 transition-all duration-700 m-4 rounded-[42px] border border-white/40">
+      <main className="flex min-h-0 flex-1 flex-col bg-white overflow-hidden relative shadow-[0_45px_120px_rgba(0,0,0,0.06)] z-10 transition-all duration-700 rounded-[42px] border border-white/40">
         {/* Header */}
         <header className="h-20 border-b border-slate-50 flex items-center justify-between px-12 shrink-0 bg-white/40 backdrop-blur-md">
           <div
@@ -138,17 +143,19 @@ export default function Home() {
 
         <div className="flex min-h-0 flex-1">
           {historyOpen && (
-            <div className="border-r border-slate-100 bg-slate-50/60">
+            <div className="h-full shrink-0 border-r border-slate-100 bg-slate-50/60">
               <ConversationsSidebar
                 conversations={conversations}
                 activeId={activeConvId}
                 onNew={() => {
                   onNewConversation();
                   setHistoryOpen(false);
+                  setMainView("chat");
                 }}
                 onSelect={(id) => {
                   setActiveConvId(id);
                   setHistoryOpen(false);
+                  setMainView("chat");
                 }}
                 onRename={onRenameConversation}
               />
@@ -157,16 +164,26 @@ export default function Home() {
 
           {/* Chat Stream Section */}
           <div className="min-w-0 flex-1">
-            <Chat
-              messages={messages}
-              bottomRef={bottomRef}
-              input={input}
-              setInput={setInput}
-              send={send}
-              loading={loading}
-              onEditUserMessage={onEditUserMessage}
-              userPhoto={user.photoURL}
-            />
+            {mainView === "admin" ? (
+              <AdminPanelModal
+                open={true}
+                mode="page"
+                onClose={() => setMainView("chat")}
+                apiBase={API_BASE}
+                googleId={user.email}
+              />
+            ) : (
+              <Chat
+                messages={messages}
+                bottomRef={bottomRef}
+                input={input}
+                setInput={setInput}
+                send={send}
+                loading={loading}
+                onEditUserMessage={onEditUserMessage}
+                userPhoto={user.photoURL}
+              />
+            )}
           </div>
         </div>
       </main>
