@@ -179,7 +179,7 @@ export function AdminsTab({
                     Cargando usuarios desde BigQuery...
                   </div>
                 ) : filteredAdminCandidates.length > 0 ? (
-                  filteredAdminCandidates.map((candidate) => {
+                  filteredAdminCandidates.map((candidate, index) => {
                     const active = selectedAdminEmail === candidate.email;
                     const allowed = candidate.isGmail;
                     const profileLabel = candidate.profileCategory || "Sin perfil";
@@ -192,7 +192,7 @@ export function AdminsTab({
 
                     return (
                       <button
-                        key={candidate.email}
+                        key={`${candidate.email}-${index}`}
                         type="button"
                         onClick={() => onSelectCandidate(candidate)}
                         className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${

@@ -1,10 +1,60 @@
 import express from "express";
+import multer from "multer";
 import { getOpenAIClient } from "../config/openai.js";
 import { normalizeEmail, isValidEmail } from "../utils/validators.js";
 import { normalizeCategory } from "../utils/helpers.js";
 import { upsertUserByEmail } from "../services/userService.js";
+import { guardarRespuestasPerfilado, extraerYGuardarPais } from "../services/perfiladoService.js";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post("/respuestas", async (req, res) => {
+  try {
+    const { google_id, preguntas, respuestas, dimensiones } = req.body;
+
+    if (!google_id) return res.status(400).json({ error: "Falta google_id" });
+    if (!Array.isArray(preguntas) || !Array.isArray(respuestas) || preguntas.length !== respuestas.length) {
+      return res.status(400).json({ error: "preguntas y respuestas deben ser arrays del mismo tamaño" });
+    }
+
+    await guardarRespuestasPerfilado({ google_id, preguntas, respuestas, dimensiones: dimensiones ?? [] });
+
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("[onboarding/respuestas] error:", err);
+    return res.status(500).json({ error: "Error guardando respuestas" });
+  }
+});
+
+router.post("/transcribir", upload.single("audio"), async (req, res) => {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Falta OPENAI_API_KEY" });
+    if (!req.file) return res.status(400).json({ error: "No se recibió audio" });
+
+    const client = getOpenAIClient(apiKey);
+
+    const transcription = await client.audio.transcriptions.create({
+      model: "whisper-1",
+      file: new File([req.file.buffer], "audio.webm", { type: req.file.mimetype }),
+      language: "es",
+    });
+
+    const stepIndex = parseInt(req.body?.step ?? "0", 10);
+    if (stepIndex === 0) {
+      void extraerYGuardarPais({
+        google_id: req.body?.google_id ?? "",
+        transcripcion: transcription.text,
+      });
+    }
+
+    return res.status(200).json({ texto: transcription.text });
+  } catch (err) {
+    console.error("[onboarding/transcribir] error:", err);
+    return res.status(500).json({ error: "Error transcribiendo audio" });
+  }
+});
 
 router.post("/", async (req, res) => {
   try {

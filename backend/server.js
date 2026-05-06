@@ -40,6 +40,7 @@ app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 app.use("/chat", chatRoutes);
 app.use("/api/configurar-onboarding", onboardingRoutes);
+app.use("/onboarding", onboardingRoutes);
 
 // Start Server
 app.listen(PORT, "0.0.0.0", () => {

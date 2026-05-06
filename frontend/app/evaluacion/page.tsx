@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { auth } from "../lib/firebase"; 
 
 const waveformHeights = [16, 22, 18, 28, 20, 26, 12, 18, 24, 16, 22];
 
@@ -14,41 +15,37 @@ const formatDuration = (seconds: number) => {
 
 const getSupportedAudioMimeType = () => {
   if (typeof MediaRecorder === "undefined") return "";
-
-  const audio = typeof Audio !== "undefined" ? new Audio() : null;
   const candidates = [
     "audio/webm;codecs=opus",
     "audio/webm",
     "audio/mp4",
+    "audio/ogg;codecs=opus",
   ];
-
-  return (
-    candidates.find((type) => {
-      if (!MediaRecorder.isTypeSupported(type)) return false;
-      if (!audio) return true;
-      return audio.canPlayType(type) !== "";
-    }) ?? ""
-  );
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
 };
 
 const questionsData = [
-  { id: 1, text: "Pregunta 1...", video: "/assets/avatar/pregunta_1.mp4" },
-  { id: 2, text: "Pregunta 2...", video: "/assets/avatar/pregunta_2.mp4" },
-  { id: 3, text: "Pregunta 3...", video: "/assets/avatar/pregunta_3.mp4" },
-  { id: 4, text: "Pregunta 4...", video: "/assets/avatar/pregunta_4.mp4" },
-  { id: 5, text: "Pregunta 5...", video: "/assets/avatar/pregunta_5.mp4" },
-  { id: 6, text: "Pregunta 6...", video: "/assets/avatar/pregunta_6.mp4" },
-  { id: 7, text: "Pregunta 7...", video: "/assets/avatar/pregunta_7.mp4" },
-  { id: 8, text: "Cierre...", video: "/assets/avatar/Cierre8.mp4" },
+  { id: 1, text: "Pregunta 1...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011524/Bienvenida_pregunta_1_ratl0s.mp4" },
+  { id: 2, text: "Pregunta 2...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011524/Pregunta_2_yqbvcn.mp4" },
+  { id: 3, text: "Pregunta 3...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011530/Pregunta_3_zbwaih.mp4" },
+  { id: 4, text: "Pregunta 4...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011524/Pregunta_4_i1hg4h.mp4" },
+  { id: 5, text: "Pregunta 5...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011524/Pregunta_5_cdwpjj.mp4" },
+  { id: 6, text: "Pregunta 6...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011524/Pregunta_6_ojljd4.mp4" },
+  { id: 7, text: "Pregunta 7...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011525/Pregunta_7_grjlp2.mp4" },
+  { id: 8, text: "Pregunta 8...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011525/Pregunta_8_mwtof8.mp4" },
+  { id: 9, text: "Cierre...", video: "https://res.cloudinary.com/dokjm2hj6/video/upload/v1778011524/Cierre_utvrdr.mp4" },
 ];
 
-const AudioBars = ({ heights }: { heights: number[] }) => (
+const AudioBars = ({ heights, isActive }: { heights: number[]; isActive: boolean }) => (
   <div className="flex items-end justify-center gap-2">
     {heights.map((height, index) => (
       <span
         key={index}
         className="inline-block w-1.5 rounded-full bg-gradient-to-b from-emerald-600 to-emerald-300"
-        style={{ height: `${height + 10}px`, transition: "height 0.18s ease" }}
+        style={{
+          height: `${height + 10}px`,
+          transition: isActive ? "height 0.08s ease" : "height 0.18s ease",
+        }}
       />
     ))}
   </div>
@@ -58,18 +55,16 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
   const playbackRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [playbackError, setPlaybackError] = useState(false);
 
   const togglePlayback = useCallback(() => {
     const audio = playbackRef.current;
     if (!audio) return;
-
     if (audio.paused) {
-      void audio.play().catch(() => {
-        setIsPlaying(false);
-      });
+      setPlaybackError(false);
+      void audio.play().catch(() => { setIsPlaying(false); setPlaybackError(true); });
       return;
     }
-
     audio.pause();
     audio.currentTime = 0;
   }, []);
@@ -78,17 +73,16 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
     const audio = new Audio(src);
     audio.preload = "metadata";
     playbackRef.current = audio;
-
     const handleEnded = () => setIsPlaying(false);
     const handlePause = () => setIsPlaying(false);
     const handlePlay = () => setIsPlaying(true);
     const handleLoadedMetadata = () => setDuration(audio.duration ?? 0);
-
+    const handleError = () => { setIsPlaying(false); setPlaybackError(true); };
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-
+    audio.addEventListener("error", handleError);
     return () => {
       audio.pause();
       audio.currentTime = 0;
@@ -96,6 +90,7 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("error", handleError);
       playbackRef.current = null;
     };
   }, [src]);
@@ -106,20 +101,14 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
       tabIndex={0}
       onClick={togglePlayback}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          togglePlayback();
-        }
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); togglePlayback(); }
       }}
       className="flex w-full max-w-[320px] items-center gap-3 rounded-full border border-emerald-200 bg-white px-3 py-2 shadow-sm transition-colors hover:border-emerald-300"
       aria-label="Reproducir respuesta grabada"
     >
       <button
         type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          togglePlayback();
-        }}
+        onClick={(event) => { event.stopPropagation(); togglePlayback(); }}
         className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-700 text-white transition-colors hover:bg-emerald-800"
         aria-label={isPlaying ? "Detener respuesta grabada" : "Reproducir respuesta grabada"}
       >
@@ -134,15 +123,11 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
       </button>
       <div className="flex flex-1 items-center gap-1">
         {Array.from({ length: 24 }).map((_, index) => (
-          <span
-            key={index}
-            className="w-1 rounded-full bg-emerald-600"
-            style={{ height: `${7 + ((index * 5) % 14)}px` }}
-          />
+          <span key={index} className="w-1 rounded-full bg-emerald-600" style={{ height: `${7 + ((index * 5) % 14)}px` }} />
         ))}
       </div>
       <span className="shrink-0 text-xs font-semibold text-emerald-700">
-        {formatDuration(duration)}
+        {playbackError ? "Error" : formatDuration(duration)}
       </span>
     </div>
   );
@@ -150,6 +135,8 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
 
 export default function EvaluacionPage() {
   const router = useRouter();
+  const googleId = auth?.currentUser?.uid ?? ""; // ← aquí, una sola vez
+
   const avatarVideoRef = useRef<HTMLVideoElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -170,28 +157,21 @@ export default function EvaluacionPage() {
   const isLastStep = currentStep === questionsData.length - 1;
 
   const cleanupAudioProcessing = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    if (audioContextRef.current) {
-      void audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
+    if (animationFrameRef.current) { cancelAnimationFrame(animationFrameRef.current); animationFrameRef.current = null; }
+    if (streamRef.current) { streamRef.current.getTracks().forEach((track) => track.stop()); streamRef.current = null; }
+    if (audioContextRef.current) { void audioContextRef.current.close(); audioContextRef.current = null; }
     analyserRef.current = null;
   }, []);
 
   const stopMicrophone = useCallback(() => {
     const recorder = mediaRecorderRef.current;
-
     if (recorder && recorder.state !== "inactive") {
+      recorder.requestData();
       recorder.stop();
+      setIsRecording(false);
+      setWaveHeights([...waveformHeights]);
+      return;
     }
-
     cleanupAudioProcessing();
     mediaRecorderRef.current = null;
     setIsRecording(false);
@@ -200,7 +180,6 @@ export default function EvaluacionPage() {
 
   const startRecording = useCallback(async () => {
     if (isAvatarTalking || isRecording) return;
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -213,19 +192,19 @@ export default function EvaluacionPage() {
       mediaRecorderRef.current = recorder;
 
       recorder.addEventListener("dataavailable", (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       });
 
       recorder.addEventListener("stop", () => {
-        if (!audioChunksRef.current.length) return;
-
-        const blob = new Blob(audioChunksRef.current, {
-          type: recorder.mimeType || mimeType || "audio/webm",
-        });
+        if (!audioChunksRef.current.length) {
+          cleanupAudioProcessing();
+          mediaRecorderRef.current = null;
+          setIsRecording(false);
+          setWaveHeights([...waveformHeights]);
+          return;
+        }
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || mimeType || "audio/webm" });
         const url = URL.createObjectURL(blob);
-
         setRecordedAudioByStep((prev) => {
           const previousUrl = prev[currentStep];
           if (previousUrl) URL.revokeObjectURL(previousUrl);
@@ -233,47 +212,46 @@ export default function EvaluacionPage() {
           recordedAudioByStepRef.current = next;
           return next;
         });
-
         setAnswerReady(true);
+        cleanupAudioProcessing();
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+        setWaveHeights([...waveformHeights]);
       });
 
-      recorder.start();
+      recorder.start(250);
 
-      const AudioCtx =
-        window.AudioContext ||
-        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
-      if (!AudioCtx) {
-        throw new Error("AudioContext no esta disponible en este navegador.");
-      }
+      const AudioCtx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) throw new Error("AudioContext no esta disponible en este navegador.");
 
       const audioContext = new AudioCtx();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
-
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
 
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-
+      const dataArray = new Uint8Array(analyser.fftSize);
       const checkVolume = () => {
         if (!analyserRef.current) return;
-
-        analyserRef.current.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-        const average = sum / bufferLength;
-
-        setWaveHeights((prev) => prev.map(() => Math.max(10, average * 1.5)));
-
-        if (streamRef.current) {
-          animationFrameRef.current = requestAnimationFrame(checkVolume);
+        analyserRef.current.getByteTimeDomainData(dataArray);
+        let sumSquares = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const normalized = (dataArray[i] - 128) / 128;
+          sumSquares += normalized * normalized;
         }
+        const rms = Math.sqrt(sumSquares / dataArray.length);
+        const amplitude = Math.max(8, rms * 520);
+        setWaveHeights((prev) =>
+          prev.map((_, index) => {
+            const spread = 0.58 + ((index % 5) * 0.18);
+            const wobble = 0.88 + Math.sin((performance.now() / 120) + index) * 0.22;
+            return Math.max(8, amplitude * spread * wobble);
+          })
+        );
+        if (streamRef.current) animationFrameRef.current = requestAnimationFrame(checkVolume);
       };
-
       checkVolume();
     } catch {
       setRecordingError("No se pudo acceder al microfono.");
@@ -284,21 +262,46 @@ export default function EvaluacionPage() {
 
   const handleResponseToggle = useCallback(() => {
     if (isAvatarTalking) return;
-
-    if (isRecording) {
-      stopMicrophone();
-      return;
-    }
-
+    if (isRecording) { stopMicrophone(); return; }
     void startRecording();
   }, [isAvatarTalking, isRecording, startRecording, stopMicrophone]);
 
-  const handleNextStep = useCallback(() => {
-    if (!answerReady && !isLastStep) return;
+  const transcribirYGuardar = useCallback(async (step: number, audioUrl: string) => {
+    try {
+      const blob = await fetch(audioUrl).then(r => r.blob());
+      const formData = new FormData();
+      formData.append("audio", blob, "audio.webm");
+      formData.append("step", String(step));
+      formData.append("google_id", googleId); 
 
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/onboarding/transcribir`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const { texto } = await res.json();
+
+      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/onboarding/respuestas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          google_id: googleId,
+          preguntas: [questionsData[step].text],
+          respuestas: [texto],
+          dimensiones: [""],
+        }),
+      });
+    } catch (err) {
+      console.error("Error transcribiendo/guardando:", err);
+    }
+  }, [googleId]);
+
+  const handleNextStep = useCallback(async () => {
+    if (!answerReady && !isLastStep) return;
     stopMicrophone();
     setWaveHeights([...waveformHeights]);
-
+    const audioUrl = recordedAudioByStepRef.current[currentStep];
+    if (audioUrl) await transcribirYGuardar(currentStep, audioUrl);
     if (currentStep < questionsData.length - 1) {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
@@ -306,15 +309,11 @@ export default function EvaluacionPage() {
       setIsAvatarTalking(true);
       return;
     }
-
     router.replace("/");
-  }, [answerReady, currentStep, isLastStep, router, stopMicrophone]);
+  }, [answerReady, currentStep, isLastStep, router, stopMicrophone, transcribirYGuardar]);
 
   useEffect(() => {
-    const initTimer = setTimeout(() => {
-      setIsAvatarTalking(true);
-    }, 1500);
-
+    const initTimer = setTimeout(() => { setIsAvatarTalking(true); }, 1500);
     return () => {
       clearTimeout(initTimer);
       stopMicrophone();
@@ -329,16 +328,12 @@ export default function EvaluacionPage() {
   useEffect(() => {
     const video = avatarVideoRef.current;
     if (!video) return;
-
     if (isAvatarTalking) {
       video.pause();
       video.currentTime = 0;
-      void video.play().catch(() => {
-        setIsAvatarTalking(false);
-      });
+      void video.play().catch(() => { setIsAvatarTalking(false); });
       return;
     }
-
     video.pause();
   }, [currentStep, isAvatarTalking]);
 
@@ -352,17 +347,12 @@ export default function EvaluacionPage() {
               src={questionsData[currentStep]?.video}
               playsInline
               preload="auto"
-              onEnded={() => {
-                setIsAvatarTalking(false);
-              }}
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
-                isAvatarTalking ? "opacity-100" : "opacity-0"
-              }`}
+              onEnded={() => { setIsAvatarTalking(false); }}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${isAvatarTalking ? "opacity-100" : "opacity-0"}`}
             />
-
             <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-[10px] text-white">
               <span className={`h-2 w-2 rounded-full ${isAvatarTalking ? "bg-emerald-500 animate-pulse" : "bg-slate-500"}`} />
-              {isAvatarTalking ? "AVATAR HABLANDO" : "TURNO DE RESPUESTA"}
+              {isAvatarTalking ? "" : "TURNO DE RESPUESTA"}
             </div>
           </div>
         </section>
@@ -379,21 +369,15 @@ export default function EvaluacionPage() {
 
           <div className="flex flex-col items-center gap-6">
             <div className="flex h-20 w-full max-w-[280px] items-center justify-center">
-              <AudioBars heights={waveHeights} />
+              <AudioBars heights={waveHeights} isActive={isRecording} />
             </div>
 
             <div className="text-sm font-medium text-slate-500">
-              {isAvatarTalking
-                ? "El avatar esta hablando..."
-                : isRecording
-                  ? "Microfono activo. Responde la pregunta."
-                  : answerReady
-                    ? "Respuesta guardada. Puedes continuar."
-                    : "Activa responder para grabar tu respuesta."}
+              {isAvatarTalking ? "" : isRecording ? "Microfono activo. Responde la pregunta." : answerReady ? "Respuesta guardada. Puedes continuar." : "Activa responder para grabar tu respuesta."}
             </div>
 
             {recordedAudioByStep[currentStep] && (
-              <RecordedAudioPlayer src={recordedAudioByStep[currentStep]} />
+              <RecordedAudioPlayer key={recordedAudioByStep[currentStep]} src={recordedAudioByStep[currentStep]} />
             )}
 
             <div className="flex w-full max-w-[420px] flex-col gap-3 sm:flex-row sm:justify-center">

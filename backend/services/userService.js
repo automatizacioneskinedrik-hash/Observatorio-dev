@@ -35,6 +35,7 @@ export async function upsertUserByEmail({
   profileCategory,
   profileAnalysis,
   tipoPerfil,
+  pais,
 }) {
   const columns = await getUserTableColumns();
   if (!columns.has("correo")) {
@@ -77,6 +78,7 @@ export async function upsertUserByEmail({
       updateParts.push("analisis_perfil = @profileAnalysis");
       params.profileAnalysis = profileAnalysis;
     }
+    
     const normalizedTipoPerfil = normalizeProfileType(tipoPerfil);
     if (normalizedTipoPerfil && columns.has("tipo_perfil")) {
       updateParts.push("tipo_perfil = @tipoPerfil");
@@ -87,6 +89,14 @@ export async function upsertUserByEmail({
       params.passwordHash = passwordHash;
     }
     
+    if (typeof pais === "string" && columns.has("pais")) {
+  updateParts.push("pais = @pais");
+  params.pais = pais;
+}
+
+console.log("[upsertUserByEmail] updateParts:", updateParts);
+console.log("[upsertUserByEmail] params:", params);
+
     if (updateParts.length > 0) {
       await bigquery.query({
         query: `UPDATE ${BQ_TABLE_REF} SET ${updateParts.join(", ")} WHERE correo = @email`,
