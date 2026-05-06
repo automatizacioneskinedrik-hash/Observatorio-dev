@@ -56,6 +56,7 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [playbackError, setPlaybackError] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
 
   const togglePlayback = useCallback(() => {
     const audio = playbackRef.current;
@@ -63,6 +64,7 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
     if (audio.paused) {
       setPlaybackError(false);
       void audio.play().catch(() => { setIsPlaying(false); setPlaybackError(true); });
+      setDuration(audio.currentTime);
       return;
     }
     audio.pause();
@@ -78,21 +80,31 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
     const handlePlay = () => setIsPlaying(true);
     const handleLoadedMetadata = () => setDuration(audio.duration ?? 0);
     const handleError = () => { setIsPlaying(false); setPlaybackError(true); };
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime ?? 0);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("error", handleError);
+    audio.load();
+  setTimeout(() => {
+    if (audio.duration && Number.isFinite(audio.duration)) {
+      setDuration(audio.duration);
+    }
+  }, 300);
     return () => {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      audio.removeEventListener("error", handleError);
-      playbackRef.current = null;
-    };
+  audio.pause();
+  audio.currentTime = 0;
+  audio.removeEventListener("ended", handleEnded);
+  audio.removeEventListener("pause", handlePause);
+  audio.removeEventListener("play", handlePlay);
+  audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+  audio.removeEventListener("timeupdate", handleTimeUpdate); 
+  audio.removeEventListener("error", handleError);
+  playbackRef.current = null;
+};
+
   }, [src]);
 
   return (
@@ -127,8 +139,8 @@ const RecordedAudioPlayer = ({ src }: { src: string }) => {
         ))}
       </div>
       <span className="shrink-0 text-xs font-semibold text-emerald-700">
-        {playbackError ? "Error" : formatDuration(duration)}
-      </span>
+  {playbackError ? "Error" : isPlaying ? formatDuration(currentTime) : "Grabado"}
+</span>
     </div>
   );
 };
