@@ -8,19 +8,6 @@ import { guardarRespuestasPerfilado, extraerYGuardarPais } from "../services/per
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
-const texto = transcription.text?.trim() ?? "";
-
-const esBasura = [
-  "subtítulos realizados por la comunidad de amara.org",
-  "amara.org",
-  "subtitles by the amara.org community",
-].some(t => texto.toLowerCase().includes(t));
-
-if (esBasura || texto.length < 3) {
-  return res.status(200).json({ texto: "" });
-}
-
-return res.status(200).json({ texto });
 
 router.post("/respuestas", async (req, res) => {
   try {
@@ -40,6 +27,7 @@ router.post("/respuestas", async (req, res) => {
   }
 });
 
+
 router.post("/transcribir", upload.single("audio"), async (req, res) => {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -54,20 +42,34 @@ router.post("/transcribir", upload.single("audio"), async (req, res) => {
       language: "es",
     });
 
+    const texto = transcription.text?.trim() ?? "";
+
+    // Lógica para evitar contenido basura de Amara.org o audios vacíos
+    const esBasura = [
+      "subtítulos realizados por la comunidad de amara.org",
+      "amara.org",
+      "subtitles by the amara.org community",
+    ].some(t => texto.toLowerCase().includes(t));
+
+    if (esBasura || texto.length < 3) {
+      return res.status(200).json({ texto: "" });
+    }
+
     const stepIndex = parseInt(req.body?.step ?? "0", 10);
     if (stepIndex === 0) {
       void extraerYGuardarPais({
         google_id: req.body?.google_id ?? "",
-        transcripcion: transcription.text,
+        transcripcion: texto,
       });
     }
 
-    return res.status(200).json({ texto: transcription.text });
+    return res.status(200).json({ texto });
   } catch (err) {
     console.error("[onboarding/transcribir] error:", err);
     return res.status(500).json({ error: "Error transcribiendo audio" });
   }
 });
+
 
 router.post("/", async (req, res) => {
   try {
@@ -87,34 +89,22 @@ router.post("/", async (req, res) => {
       return res.status(500).json({ error: "Falta OPENAI_API_KEY" });
     }
 
-    console.log("[api/configurar-onboarding] iniciando analisis de IA", {
-      email,
-      respuestas: respuestas.map((r) => String(r ?? "").trim().slice(0, 120)),
-    });
-
     const prompt = `
-Eres un clasificador de perfil profesional para onboarding.
-Tu tarea: clasificar a la persona en una sola categoria de esta lista exacta:
-- CEO
-- Dueño
-- Inversor
-- Líder Directivo
-- Coordinador
-- Técnico Profesional
+      Eres un clasificador de perfil profesional para onboarding.
+      Tu tarea: clasificar a la persona en una sola categoria de esta lista exacta:
+      - CEO
+      - Dueño
+      - Inversor
+      - Líder Directivo
+      - Coordinador
+      - Técnico Profesional
 
-Usa el contenido de sus respuestas para inferir su rol real segun:
-1) nivel de decision
-2) relacion con el negocio
-3) enfoque diario (estrategico/operativo/tecnico)
-
-Responde SOLO en JSON valido con esta forma exacta:
-{
-  "categoria": "una categoria exacta de la lista",
-  "analisis": "explicacion breve y personalizada en maximo 45 palabras"
-}
-
-No uses categorias fuera de la lista.
-`;
+      Responde SOLO en JSON valido:
+      {
+        "categoria": "una categoria exacta",
+        "analisis": "explicacion breve"
+      }
+    `;
 
     const content = `Pregunta 1:\n${String(respuestas[0]).trim()}\n\nPregunta 2:\n${String(
       respuestas[1]
@@ -142,7 +132,7 @@ No uses categorias fuera de la lista.
     const analisis =
       typeof parsed?.analisis === "string" && parsed.analisis.trim()
         ? parsed.analisis.trim().slice(0, 320)
-        : "Tu perfil refleja como decides, te vinculas al negocio y priorizas tu trabajo semanal.";
+        : "Tu perfil refleja como decides y priorizas tu trabajo semanal.";
 
     await upsertUserByEmail({
       email,
