@@ -143,6 +143,7 @@ export function AuthGate({ onAuthenticated }: Props) {
           typeof data?.tipo_caracterizacion === "string"
             ? data.tipo_caracterizacion
             : null,
+        role: "user",
       };
 
       if (typeof window !== "undefined") {

@@ -26,6 +26,7 @@ type Props = {
   historyOpen: boolean;
   onAdminPanelClick?: () => void;
   adminActive?: boolean;
+  canAccessAdminPanel?: boolean;
 };
 
 const getUserInitials = (name?: string | null) => {
@@ -47,6 +48,7 @@ export function Sidebar({
   historyOpen,
   onAdminPanelClick,
   adminActive,
+  canAccessAdminPanel = false,
 }: Props) {
   const initials = getUserInitials(user?.name);
 
@@ -174,18 +176,20 @@ export function Sidebar({
             <span className="text-[14.5px] font-bold tracking-tight">Analítica AEC</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={onAdminPanelClick}
-            className={`group flex w-full cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3.5 shadow-sm transition-all hover:shadow-md ${
-              adminActive
-                ? "border-emerald-300 bg-emerald-100/80 text-emerald-900"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100/70"
-            }`}
-          >
-            <Layers size={22} className="opacity-90 transition-opacity group-hover:opacity-100" />
-            <span className="text-[14.5px] font-bold tracking-tight">Panel de administración</span>
-          </button>
+          {canAccessAdminPanel ? (
+            <button
+              type="button"
+              onClick={onAdminPanelClick}
+              className={`group flex w-full cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3.5 shadow-sm transition-all hover:shadow-md ${
+                adminActive
+                  ? "border-emerald-300 bg-emerald-100/80 text-emerald-900"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100/70"
+              }`}
+            >
+              <Layers size={22} className="opacity-90 transition-opacity group-hover:opacity-100" />
+              <span className="text-[14.5px] font-bold tracking-tight">Panel de administración</span>
+            </button>
+          ) : null}
         </div>
       </nav>
 

@@ -191,6 +191,7 @@ const [categoriaDetectada, setCategoriaDetectada] = useState("");
               ...parsed,
               isProfileComplete: true,
               profileCategory: category,
+              role: parsed?.role === "admin" ? "admin" : "user",
             })
           );
         } catch {

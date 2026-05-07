@@ -145,12 +145,13 @@ router.post("/google", async (req, res) => {
     console.log("[auth/google] Token verificado:", { email });
 
     const [rows] = await bigquery.query({
-      query: `SELECT perfil_confirmado, tipo_caracterizacion FROM ${BQ_TABLE_REF} WHERE google_id = @googleId`,
+      query: `SELECT perfil_confirmado, tipo_caracterizacion, tipo_perfil FROM ${BQ_TABLE_REF} WHERE google_id = @googleId`,
       params: { googleId: gId },
     });
 
     let isProfileComplete = false;
     let tipo_caracterizacion = null;
+    let tipo_perfil = "user";
 
     if (rows.length === 0) {
       await bigquery.query({
@@ -160,9 +161,10 @@ router.post("/google", async (req, res) => {
     } else {
       isProfileComplete = rows[0].perfil_confirmado === true;
       tipo_caracterizacion = rows[0].tipo_caracterizacion ?? null;
+      tipo_perfil = String(rows[0].tipo_perfil ?? "user").trim().toLowerCase() === "admin" ? "admin" : "user";
     }
 
-    return res.status(200).json({ id: gId, email, name, isProfileComplete, tipo_caracterizacion });
+    return res.status(200).json({ id: gId, email, name, isProfileComplete, tipo_caracterizacion, tipo_perfil });
   } catch (err) {
     console.error("[auth/google] error:", err);
     return res.status(401).json({ error: "Unauthorized" });

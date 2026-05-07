@@ -20,6 +20,7 @@ export default function Home() {
   const [mainView, setMainView] = useState<"chat" | "admin">("chat");
   const [menuOpen, setMenuOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const canAccessAdminPanel = user?.role === "admin";
 
   const handleAuthSuccess = useCallback((nextUser: User) => {
     setUser(nextUser);
@@ -57,6 +58,12 @@ export default function Home() {
     router.replace("/comenzar");
   }, [router, user]);
 
+  useEffect(() => {
+    if (mainView === "admin" && !canAccessAdminPanel) {
+      setMainView("chat");
+    }
+  }, [canAccessAdminPanel, mainView]);
+
   if (authLoading && !user) return <div className="h-screen" style={{ backgroundColor: "var(--kv-bg)" }} />;
   if (!user) return <AuthGate onAuthenticated={handleAuthSuccess} />;
   if (user.isProfileComplete !== true) return null;
@@ -87,11 +94,16 @@ export default function Home() {
         }}
         historyOpen={historyOpen}
         onUserClick={() => setAuthOpen(true)}
-        onAdminPanelClick={() => {
-          setHistoryOpen(false);
-          setMainView("admin");
-        }}
+        onAdminPanelClick={
+          canAccessAdminPanel
+            ? () => {
+                setHistoryOpen(false);
+                setMainView("admin");
+              }
+            : undefined
+        }
         adminActive={mainView === "admin"}
+        canAccessAdminPanel={canAccessAdminPanel}
       />
 
       {authOpen && (
@@ -164,7 +176,7 @@ export default function Home() {
 
           {/* Chat Stream Section */}
           <div className="min-w-0 flex-1">
-            {mainView === "admin" ? (
+            {mainView === "admin" && canAccessAdminPanel ? (
               <AdminPanelModal
                 open={true}
                 mode="page"

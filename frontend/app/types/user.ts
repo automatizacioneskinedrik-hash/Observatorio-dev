@@ -5,5 +5,5 @@ export type User = {
   isProfileComplete?: boolean;
   profileCategory?: string | null;
   photoURL?: string | null;
-  role?: string | null;
+  role?: "admin" | "user" | null;
 };

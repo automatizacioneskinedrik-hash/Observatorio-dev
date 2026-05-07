@@ -35,30 +35,45 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
   }, []);
 
   const readLocalProfileState = useCallback(
-    (email: string): Pick<User, "isProfileComplete" | "profileCategory"> => {
+    (email: string): Pick<User, "isProfileComplete" | "profileCategory" | "role"> => {
       if (typeof window === "undefined") {
-        return { isProfileComplete: false, profileCategory: null };
+        return { isProfileComplete: false, profileCategory: null, role: "user" };
       }
 
       const localEmail = localStorage.getItem("kv_user_email") ?? "";
       if (localEmail && localEmail !== email) {
-        return { isProfileComplete: false, profileCategory: null };
+        return { isProfileComplete: false, profileCategory: null, role: "user" };
       }
 
       const localComplete = localStorage.getItem("kv_profile_complete") === "true";
       const localCategory = localStorage.getItem("kv_profile_category") || null;
+      const rawLocalUser = localStorage.getItem("kv_local_user");
+      let localRole: User["role"] = "user";
+
+      if (rawLocalUser) {
+        try {
+          const parsed = JSON.parse(rawLocalUser) as Partial<User>;
+          if (parsed?.role === "admin" || parsed?.role === "user") {
+            localRole = parsed.role;
+          }
+        } catch {
+          localRole = "user";
+        }
+      }
+
       return {
         isProfileComplete: localComplete,
         profileCategory: localCategory,
+        role: localRole,
       };
     },
     []
   );
 
   const resolveProfileFromBackend = useCallback(
-    async (fbUser: FirebaseUser): Promise<Pick<User, "isProfileComplete" | "profileCategory">> => {
+    async (fbUser: FirebaseUser): Promise<Pick<User, "isProfileComplete" | "profileCategory" | "role">> => {
       if (!fbUser.email) {
-        return { isProfileComplete: false, profileCategory: null };
+        return { isProfileComplete: false, profileCategory: null, role: "user" };
       }
       if (!apiBase) {
         return readLocalProfileState(fbUser.email);
@@ -86,6 +101,7 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
             typeof data?.tipo_caracterizacion === "string"
               ? data.tipo_caracterizacion
               : null,
+          role: data?.tipo_perfil === "admin" ? "admin" : "user",
         };
       } catch {
         return readLocalProfileState(fbUser.email);
@@ -103,6 +119,7 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
         subscription: "Free",
         isProfileComplete: profile.isProfileComplete,
         profileCategory: profile.profileCategory,
+        role: profile.role ?? "user",
       };
 
       persistProfileState(userData);
@@ -136,6 +153,7 @@ export function useSocialAuth(onSuccess: (user: User) => void) {
             subscription: "Free",
             isProfileComplete: true,
             profileCategory: localProfile.profileCategory,
+            role: localProfile.role ?? "user",
           };
           onSuccessRef.current(localUserData);
           setAuthLoading(false);
