@@ -359,6 +359,7 @@ export default function EvaluacionPage() {
               src={questionsData[currentStep]?.video}
               playsInline
               preload="auto"
+              muted={isRecording}
               onEnded={() => { setIsAvatarTalking(false); }}
               className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${isAvatarTalking ? "opacity-100" : "opacity-0"}`}
             />
