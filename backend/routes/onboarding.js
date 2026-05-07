@@ -8,6 +8,19 @@ import { guardarRespuestasPerfilado, extraerYGuardarPais } from "../services/per
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+const texto = transcription.text?.trim() ?? "";
+
+const esBasura = [
+  "subtítulos realizados por la comunidad de amara.org",
+  "amara.org",
+  "subtitles by the amara.org community",
+].some(t => texto.toLowerCase().includes(t));
+
+if (esBasura || texto.length < 3) {
+  return res.status(200).json({ texto: "" });
+}
+
+return res.status(200).json({ texto });
 
 router.post("/respuestas", async (req, res) => {
   try {
